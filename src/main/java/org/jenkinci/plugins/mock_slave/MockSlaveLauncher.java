@@ -43,8 +43,15 @@ public class MockSlaveLauncher extends ComputerLauncher {
 
     private static final Logger LOGGER = Logger.getLogger(MockSlaveLauncher.class.getName());
 
+    public final long delay;
+    public final long latency;
+    public final long overhead;
+
     @DataBoundConstructor
-    public MockSlaveLauncher() {
+    public MockSlaveLauncher(long delay, long latency, long overhead) {
+        this.delay = delay;
+        this.latency = latency;
+        this.overhead = overhead;
     }
     
     @Override public void launch(SlaveComputer computer, TaskListener listener) throws IOException, InterruptedException {
@@ -54,7 +61,8 @@ public class MockSlaveLauncher extends ComputerLauncher {
         pb.environment().putAll(cookie);
         final Process proc = pb.start();
         new StreamCopyThread("stderr copier for remote agent on " + computer.getDisplayName(), proc.getErrorStream(), listener.getLogger()).start();
-        computer.setChannel(proc.getInputStream(), proc.getOutputStream(), listener.getLogger(), new Channel.Listener() {
+        Throttler t = new Throttler(delay, latency, overhead, listener.getLogger());
+        computer.setChannel(t.wrap(proc.getInputStream()), t.wrap(proc.getOutputStream()), listener.getLogger(), new Channel.Listener() {
             @Override public void onClosed(Channel channel, IOException cause) {
                 try {
                     ProcessTree.get().killAll(proc, cookie);

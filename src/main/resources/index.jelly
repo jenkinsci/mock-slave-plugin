@@ -1,3 +1,4 @@
 <div>
   Launches a slave agent on the local machine to simulate a remote agent.
+  Optionally simulates network latency problems.
 </div>
