@@ -2,13 +2,10 @@
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
     <f:advanced>
-        <f:entry title="Delay (µs)" field="delay">
+        <f:entry title="Latency (ms)" field="latency">
             <f:number clazz="required number" min="0"/>
         </f:entry>
-        <f:entry title="Latency (µs)" field="latency">
-            <f:number clazz="required number" min="0"/>
-        </f:entry>
-        <f:entry title="Overhead (µs)" field="overhead">
+        <f:entry title="Bandwidth (bps)" field="bandwidth">
             <f:number clazz="required number" min="0"/>
         </f:entry>
     </f:advanced>

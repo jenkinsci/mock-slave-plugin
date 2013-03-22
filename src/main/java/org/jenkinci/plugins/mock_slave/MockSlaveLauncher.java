@@ -35,6 +35,8 @@ import hudson.slaves.SlaveComputer;
 import hudson.util.ProcessTree;
 import hudson.util.StreamCopyThread;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -43,17 +45,15 @@ public class MockSlaveLauncher extends ComputerLauncher {
 
     private static final Logger LOGGER = Logger.getLogger(MockSlaveLauncher.class.getName());
 
-    public final long delay;
-    public final long latency;
-    public final long overhead;
-
-    @DataBoundConstructor
-    public MockSlaveLauncher(long delay, long latency, long overhead) {
-        this.delay = delay;
-        this.latency = latency;
-        this.overhead = overhead;
-    }
+    public final int latency;
+    public final int bandwidth;
     
+    @DataBoundConstructor
+    public MockSlaveLauncher(int latency, int bandwidth) {
+        this.latency = latency;
+        this.bandwidth = bandwidth;
+    }
+
     @Override public void launch(SlaveComputer computer, TaskListener listener) throws IOException, InterruptedException {
         listener.getLogger().println("Launching");
         ProcessBuilder pb = new ProcessBuilder("java", "-jar", Which.jarFile(Which.class).getAbsolutePath());
@@ -61,8 +61,15 @@ public class MockSlaveLauncher extends ComputerLauncher {
         pb.environment().putAll(cookie);
         final Process proc = pb.start();
         new StreamCopyThread("stderr copier for remote agent on " + computer.getDisplayName(), proc.getErrorStream(), listener.getLogger()).start();
-        Throttler t = new Throttler(delay, latency, overhead, listener.getLogger());
-        computer.setChannel(t.wrap(proc.getInputStream()), t.wrap(proc.getOutputStream()), listener.getLogger(), new Channel.Listener() {
+        InputStream is = proc.getInputStream();
+        OutputStream os = proc.getOutputStream();
+        if (latency > 0 || bandwidth > 0) {
+            listener.getLogger().printf("throttling with latency=%dms overhead=%dbpss%n", latency, bandwidth);
+            Throttler t = new Throttler(latency, bandwidth, is, os);
+            is = t.is();
+            os = t.os();
+        }
+        computer.setChannel(is, os, listener.getLogger(), new Channel.Listener() {
             @Override public void onClosed(Channel channel, IOException cause) {
                 try {
                     ProcessTree.get().killAll(proc, cookie);
