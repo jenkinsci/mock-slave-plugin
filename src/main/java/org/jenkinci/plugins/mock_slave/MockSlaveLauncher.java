@@ -64,7 +64,7 @@ public class MockSlaveLauncher extends ComputerLauncher {
         InputStream is = proc.getInputStream();
         OutputStream os = proc.getOutputStream();
         if (latency > 0 || bandwidth > 0) {
-            listener.getLogger().printf("throttling with latency=%dms overhead=%dbpss%n", latency, bandwidth);
+            listener.getLogger().printf("throttling with latency=%dms bandwidth=%dbps%n", latency, bandwidth);
             Throttler t = new Throttler(latency, bandwidth, is, os);
             is = t.is();
             os = t.os();
