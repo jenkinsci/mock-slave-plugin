@@ -34,11 +34,15 @@ import hudson.slaves.ComputerLauncher;
 import hudson.slaves.SlaveComputer;
 import hudson.util.ProcessTree;
 import hudson.util.StreamCopyThread;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.InetAddress;
+import java.net.Socket;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.apache.commons.io.FileUtils;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 public class MockSlaveLauncher extends ComputerLauncher {
@@ -56,13 +60,20 @@ public class MockSlaveLauncher extends ComputerLauncher {
 
     @Override public void launch(SlaveComputer computer, TaskListener listener) throws IOException, InterruptedException {
         listener.getLogger().println("Launching");
-        ProcessBuilder pb = new ProcessBuilder("java", "-jar", Which.jarFile(Which.class).getAbsolutePath());
+        File portFile = File.createTempFile("jenkins-port", "");
+        final ProcessBuilder pb = new ProcessBuilder("java", "-jar", Which.jarFile(Which.class).getAbsolutePath(), "-tcp", portFile.getAbsolutePath());
         final EnvVars cookie = EnvVars.createCookie();
         pb.environment().putAll(cookie);
         final Process proc = pb.start();
         new StreamCopyThread("stderr copier for remote agent on " + computer.getDisplayName(), proc.getErrorStream(), listener.getLogger()).start();
-        InputStream is = proc.getInputStream();
-        OutputStream os = proc.getOutputStream();
+        while (portFile.length() == 0) {
+            Thread.sleep(100);
+        }
+        int port = Integer.parseInt(FileUtils.readFileToString(portFile));
+        listener.getLogger().println("connecting to localhost:" + port);
+        Socket s = new Socket(InetAddress.getLoopbackAddress(), port);
+        InputStream is = s.getInputStream();
+        OutputStream os = s.getOutputStream();
         if (latency > 0 || bandwidth > 0) {
             listener.getLogger().printf("throttling with latency=%dms bandwidth=%dbps%n", latency, bandwidth);
             Throttler t = new Throttler(latency, bandwidth, is, os);

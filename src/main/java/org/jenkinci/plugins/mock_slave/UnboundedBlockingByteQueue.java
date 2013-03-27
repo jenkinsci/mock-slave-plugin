@@ -35,7 +35,7 @@ final class UnboundedBlockingByteQueue {
         if (size == buf.length) {
             byte[] buf2 = new byte[Math.round(size * growth + 1)];
             assert buf2.length > buf.length;
-            log("expanding from " + size + " to " + buf2.length);
+            //log("expanding from " + size + " to " + buf2.length);
             System.arraycopy(buf, start, buf2, 0, size - start);
             System.arraycopy(buf, 0, buf2, size - start, start);
             buf = buf2;

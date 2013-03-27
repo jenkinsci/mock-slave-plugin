@@ -23,33 +23,9 @@ final class Throttler {
         UnboundedBlockingByteQueue in = new UnboundedBlockingByteQueue("in", 128 * 1024, 1.3f);
         new StreamCopyThread("incoming", is, new DelayedOutputStream(in)).start();
         this.is = new DelayedInputStream(in);
-        /* XXX should be:
         UnboundedBlockingByteQueue out = new UnboundedBlockingByteQueue("out", 128 * 1024, 1.3f);
         new StreamCopyThread("outgoing", new DelayedInputStream(out), os).start();
         this.os = new DelayedOutputStream(out);
-        * but this causes a hang after a while (blocked reading empty queue) for unknown reasons:
-	at org.jenkinci.plugins.mock_slave.UnboundedBlockingByteQueue.read(UnboundedBlockingByteQueue.java:58)
-	at org.jenkinci.plugins.mock_slave.Throttler$DelayedInputStream.read(Throttler.java:73)
-	at java.io.ObjectInputStream$PeekInputStream.peek(ObjectInputStream.java:2272)
-	at java.io.ObjectInputStream$BlockDataInputStream.peek(ObjectInputStream.java:2565)
-	at java.io.ObjectInputStream$BlockDataInputStream.peekByte(ObjectInputStream.java:2575)
-	at java.io.ObjectInputStream.readObject0(ObjectInputStream.java:1315)
-	at java.io.ObjectInputStream.readObject(ObjectInputStream.java:369)
-	at hudson.remoting.Command.readFrom(Command.java:92)
-	at hudson.remoting.ClassicCommandTransport.read(ClassicCommandTransport.java:59)
-	at hudson.remoting.SynchronousCommandTransport$ReaderThread.run(SynchronousCommandTransport.java:48)
-        * which looks suspiciously like an error sometimes shown for a real slave at shutdown:
-        ERROR: Connection terminated
-        java.io.IOException: Unexpected termination of the channel
-	at hudson.remoting.Channel$ReaderThread.run(Channel.java:1115)
-        Caused by: java.io.EOFException
-	at java.io.ObjectInputStream$BlockDataInputStream.peekByte(ObjectInputStream.java:2577)
-	at java.io.ObjectInputStream.readObject0(ObjectInputStream.java:1315)
-	at java.io.ObjectInputStream.readObject(ObjectInputStream.java:369)
-	at hudson.remoting.Channel$ReaderThread.run(Channel.java:1109)
-        * so instead for now we are just making outgoing channel a direct link:
-        */
-        this.os = os;
     }
 
     InputStream is() {
@@ -80,7 +56,7 @@ final class Throttler {
                          ((stream.read() & 255) <<  8) +
                          ((stream.read() & 255) <<  0);
                 if (t == 0) { // EOF
-                    stream.log("got EOF");
+                    //stream.log("got EOF");
                     return -1;
                 }
                 //stream.log("read time " + new Date(t));
@@ -148,7 +124,7 @@ final class Throttler {
         }
 
         @Override public void close() throws IOException {
-            stream.log("closing");
+            //stream.log("closing");
             for (int i = 0; i < 8; i++) {
                 stream.write((byte) 0);
             }
@@ -174,7 +150,7 @@ final class Throttler {
                     while ((c = in.read()) != -1) {
                         out.write(c);
                     }
-                    System.err.println("eof on " + getName());
+                    //System.err.println("eof on " + getName());
                 } finally {
                     in.close();
                 }
