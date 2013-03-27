@@ -99,7 +99,8 @@ final class Throttler {
         }
 
         @Override public int read(byte[] b, int off, int len) throws IOException {
-            int max = Math.min(len, Math.max(stream.available(), 1));
+            int max = Math.min(len, Math.max(available(), 1));
+            //stream.log("requested " + len + " and will try to read " + max);
             int i = 0;
             for (; i < max; i++) {
                 int c = read();
@@ -115,9 +116,9 @@ final class Throttler {
         }
 
         @Override public int available() throws IOException {
-            // XXX should really be 0 when at EOF, but that is tricky to implement currently
-            // (would need to change UnboundedBlockingByteQueue to have an explicit closed flag)
-            return stream.available();
+            int r = stream.available() / 9;
+            //stream.log(r + " bytes available");
+            return r;
         }
 
     }
