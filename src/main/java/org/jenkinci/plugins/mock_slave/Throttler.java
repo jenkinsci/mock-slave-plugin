@@ -21,11 +21,11 @@ final class Throttler {
     Throttler(int latency, int bandwidth, InputStream is, OutputStream os) throws IOException {
         this.latency = latency;
         this.bandwidth = bandwidth;
-        UnboundedBlockingByteQueue in = new UnboundedBlockingByteQueue(128 * 1024, 1.3f);
+        UnboundedBlockingByteQueue in = new UnboundedBlockingByteQueue("in", 128 * 1024, 1.3f);
         new StreamCopyThread("incoming", is, new DelayedOutputStream(in)).start();
         this.is = new DelayedInputStream(in);
         /* XXX should be:
-        UnboundedBlockingByteQueue out = new UnboundedBlockingByteQueue(128 * 1024, 1.3f);
+        UnboundedBlockingByteQueue out = new UnboundedBlockingByteQueue("out", 128 * 1024, 1.3f);
         new StreamCopyThread("outgoing", new DelayedInputStream(out), os).start();
         this.os = new DelayedOutputStream(out);
         * but this causes a hang after a while (blocked reading empty queue) for unknown reasons:
@@ -39,6 +39,15 @@ final class Throttler {
 	at hudson.remoting.Command.readFrom(Command.java:92)
 	at hudson.remoting.ClassicCommandTransport.read(ClassicCommandTransport.java:59)
 	at hudson.remoting.SynchronousCommandTransport$ReaderThread.run(SynchronousCommandTransport.java:48)
+        * which looks suspiciously like an error sometimes shown for a real slave at shutdown:
+        ERROR: Connection terminated
+        java.io.IOException: Unexpected termination of the channel
+	at hudson.remoting.Channel$ReaderThread.run(Channel.java:1115)
+        Caused by: java.io.EOFException
+	at java.io.ObjectInputStream$BlockDataInputStream.peekByte(ObjectInputStream.java:2577)
+	at java.io.ObjectInputStream.readObject0(ObjectInputStream.java:1315)
+	at java.io.ObjectInputStream.readObject(ObjectInputStream.java:369)
+	at hudson.remoting.Channel$ReaderThread.run(Channel.java:1109)
         * so instead for now we are just making outgoing channel a direct link:
         */
         this.os = os;
@@ -90,24 +99,26 @@ final class Throttler {
         }
 
         @Override public int read(byte[] b, int off, int len) throws IOException {
-            if (len == 0) {
-                return 0;
-            } else {
+            int max = Math.min(len, Math.max(stream.available(), 1));
+            int i = 0;
+            for (; i < max; i++) {
                 int c = read();
                 if (c == -1) {
-                    return -1;
+                    //stream.log("read to EOF " + i + "/" + len);
+                    return i - 1;
                 } else {
-                    b[off] = (byte) c;
-                    return 1;
+                    b[off + i] = (byte) c;
                 }
             }
+            //stream.log("read " + i + "/" + len);
+            return i;
         }
 
-        /* XXX not correct, should be 0 at EOF and >=1 otherwise, but how to determine this easily w/o blocking?
         @Override public int available() throws IOException {
-            return 1;
+            // XXX should really be 0 when at EOF, but that is tricky to implement currently
+            // (would need to change UnboundedBlockingByteQueue to have an explicit closed flag)
+            return stream.available();
         }
-        */
 
     }
 

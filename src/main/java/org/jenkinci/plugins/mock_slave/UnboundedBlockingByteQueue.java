@@ -7,8 +7,7 @@ package org.jenkinci.plugins.mock_slave;
  */
 final class UnboundedBlockingByteQueue {
 
-    private static int nextId;
-    private final int id;
+    private final String id;
     private final float growth;
     /** expandable circular buffer */
     private byte[] buf;
@@ -17,10 +16,8 @@ final class UnboundedBlockingByteQueue {
     /** bytes currently in queue */
     private int size;
 
-    UnboundedBlockingByteQueue(int initialCapacity, float growth) {
-        synchronized (UnboundedBlockingByteQueue.class) {
-            id = nextId++;
-        }
+    UnboundedBlockingByteQueue(String id, int initialCapacity, float growth) {
+        this.id = id;
         if (initialCapacity < 1 || growth <= 1) {
             throw new IllegalArgumentException();
         }
@@ -63,6 +60,11 @@ final class UnboundedBlockingByteQueue {
         size--;
         assert invariants();
         return b;
+    }
+
+    synchronized int available() {
+        assert invariants();
+        return size;
     }
 
     void log(String msg) {
