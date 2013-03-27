@@ -1,6 +1,5 @@
 package org.jenkinci.plugins.mock_slave;
 
-import hudson.util.StreamCopyThread;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -152,6 +151,35 @@ final class Throttler {
             stream.log("closing");
             for (int i = 0; i < 8; i++) {
                 stream.write((byte) 0);
+            }
+        }
+
+    }
+
+    private static class StreamCopyThread extends Thread {
+
+        private final InputStream in;
+        private final OutputStream out;
+
+        StreamCopyThread(String threadName, InputStream in, OutputStream out) {
+            super(threadName);
+            this.in = in;
+            this.out = out;
+        }
+
+        @Override public void run() {
+            try {
+                try {
+                    int c;
+                    while ((c = in.read()) != -1) {
+                        out.write(c);
+                    }
+                    System.err.println("eof on " + getName());
+                } finally {
+                    in.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
             }
         }
 
