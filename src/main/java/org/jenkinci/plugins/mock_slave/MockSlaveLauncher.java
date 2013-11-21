@@ -40,9 +40,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.apache.commons.io.FileUtils;
+import org.codehaus.mojo.animal_sniffer.IgnoreJRERequirement;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 public class MockSlaveLauncher extends ComputerLauncher {
@@ -71,7 +73,7 @@ public class MockSlaveLauncher extends ComputerLauncher {
         }
         int port = Integer.parseInt(FileUtils.readFileToString(portFile));
         listener.getLogger().println("connecting to localhost:" + port);
-        Socket s = new Socket(InetAddress.getLoopbackAddress(), port);
+        Socket s = new Socket(getLoopbackAddress(), port);
         InputStream is = s.getInputStream();
         OutputStream os = s.getOutputStream();
         if (latency > 0 || bandwidth > 0) {
@@ -90,6 +92,15 @@ public class MockSlaveLauncher extends ComputerLauncher {
             }
         });
         LOGGER.log(Level.INFO, "slave agent launched for {0}", computer.getDisplayName());
+    }
+
+    @IgnoreJRERequirement
+    private InetAddress getLoopbackAddress() throws UnknownHostException {
+        try {
+            return InetAddress.getLoopbackAddress();
+        } catch (NoSuchMethodError x) { // JDK 5/6
+            return InetAddress.getLocalHost();
+        }
     }
 
     @Extension
