@@ -11,6 +11,12 @@
     <packaging>hpi</packaging>
     <name>Mock Slave Plugin</name>
     <url>https://wiki.jenkins-ci.org/display/JENKINS/Mock+Slave+Plugin</url>
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>http://www.opensource.org/licenses/mit-license.php</url>
+        </license>
+    </licenses>
     <scm>
         <connection>scm:git:git://github.com/jenkinsci/mock-slave-plugin.git</connection>
         <developerConnection>scm:git:git@github.com:jenkinsci/mock-slave-plugin.git</developerConnection>
