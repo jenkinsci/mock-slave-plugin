@@ -21,6 +21,21 @@
         <developerConnection>scm:git:git@github.com:jenkinsci/mock-slave-plugin.git</developerConnection>
         <url>https://github.com/jenkinsci/mock-slave-plugin</url>
     </scm>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.jenkins-ci.tools</groupId>
+                <artifactId>maven-hpi-plugin</artifactId>
+                <version>1.106</version>
+                <configuration>
+                    <loggers>
+                        <org.jenkinci.plugins.mock_slave>FINE</org.jenkinci.plugins.mock_slave>
+                        <hudson.slaves>FINE</hudson.slaves>
+                    </loggers>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
     <repositories>
         <repository>
             <id>repo.jenkins-ci.org</id>
