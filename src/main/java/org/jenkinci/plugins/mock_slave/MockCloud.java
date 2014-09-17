@@ -29,8 +29,11 @@ import hudson.Util;
 import hudson.model.Computer;
 import hudson.model.Descriptor;
 import hudson.model.Descriptor.FormException;
+import hudson.model.Executor;
+import hudson.model.ExecutorListener;
 import hudson.model.Label;
 import hudson.model.Node;
+import hudson.model.Queue;
 import hudson.model.TaskListener;
 import hudson.slaves.AbstractCloudComputer;
 import hudson.slaves.AbstractCloudSlave;
@@ -39,6 +42,7 @@ import hudson.slaves.CloudRetentionStrategy;
 import hudson.slaves.EphemeralNode;
 import hudson.slaves.NodeProperty;
 import hudson.slaves.NodeProvisioner;
+import hudson.slaves.RetentionStrategy;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -106,8 +110,7 @@ public final class MockCloud extends Cloud {
     private static final class MockCloudSlave extends AbstractCloudSlave implements EphemeralNode {
 
         MockCloudSlave(int cnt, Node.Mode mode, int numExecutors, String labelString) throws FormException, IOException {
-            // could also use a custom RetentionStrategy + QueueTaskDispatcher + RunListener to shut down after one build (when numExecutors == 1)
-            super("mock-slave-" + cnt, "Mock Slave", Util.createTempDir().getAbsolutePath(), numExecutors, mode, labelString, new MockSlaveLauncher(0, 0), new CloudRetentionStrategy(1), Collections.<NodeProperty<?>>emptyList());
+            super("mock-slave-" + cnt, "Mock Slave", Util.createTempDir().getAbsolutePath(), numExecutors, mode, labelString, new MockSlaveLauncher(0, 0), numExecutors == 1 ? new OnceRetentionStrategy() : new CloudRetentionStrategy(1), Collections.<NodeProperty<?>>emptyList());
         }
 
         @Override public AbstractCloudComputer<?> createComputer() {
@@ -128,6 +131,50 @@ public final class MockCloud extends Cloud {
 
         MockCloudComputer(MockCloudSlave slave) {
             super(slave);
+        }
+
+    }
+
+    private static final class OnceRetentionStrategy extends RetentionStrategy<AbstractCloudComputer<?>> implements ExecutorListener {
+
+        @Override public void start(AbstractCloudComputer<?> c) {
+            c.connect(false);
+        }
+
+        @Override public long check(AbstractCloudComputer<?> c) {
+            // Should be unnecessary, but just in case:
+            if (c.isIdle() && !c.isAcceptingTasks()) {
+                kill(c);
+            }
+            return 1;
+        }
+
+        @Override public void taskAccepted(Executor executor, Queue.Task task) {}
+
+        @Override public void taskCompleted(Executor executor, Queue.Task task, long durationMS) {
+            done(executor);
+        }
+
+        @Override public void taskCompletedWithProblems(Executor executor, Queue.Task task, long durationMS, Throwable problems) {
+            done(executor);
+        }
+
+        private void done(Executor executor) {
+            AbstractCloudComputer<?> c = (AbstractCloudComputer) executor.getOwner();
+            c.setAcceptingTasks(false); // just in case
+            // Best to kill them off ASAP; otherwise NodeProvisioner does nothing until ComputerRetentionWork has run, causing poor throughput:
+            kill(c);
+            // TODO calling NodeProvisioner.suggestReviewNow here does not seem to help push things along at all
+        }
+
+        private void kill(AbstractCloudComputer<?> c) {
+            try {
+                c.getNode().terminate();
+            } catch (InterruptedException x) {
+                LOGGER.log(Level.WARNING, null, x);
+            } catch (IOException x) {
+                LOGGER.log(Level.WARNING, null, x);
+            }
         }
 
     }
