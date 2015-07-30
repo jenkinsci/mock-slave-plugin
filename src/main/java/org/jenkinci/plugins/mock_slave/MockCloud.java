@@ -25,7 +25,6 @@
 package org.jenkinci.plugins.mock_slave;
 
 import hudson.Extension;
-import hudson.Util;
 import hudson.model.Computer;
 import hudson.model.Descriptor;
 import hudson.model.Descriptor.FormException;
@@ -85,8 +84,8 @@ public final class MockCloud extends Cloud {
         while (excessWorkload > 0) {
             final int cnt = counter.incrementAndGet();
             r.add(new NodeProvisioner.PlannedNode("Mock Slave #" + cnt, Computer.threadPoolForRemoting.submit(new Callable<Node>() {
-                public Node call() throws Exception {
-                    return new MockCloudSlave(cnt, mode, numExecutors, labelString);
+                @Override public Node call() throws Exception {
+                    return new MockCloudSlave("mock-slave-" + cnt, mode, numExecutors, labelString);
                 }
             }), numExecutors));
             excessWorkload -= numExecutors;
@@ -105,8 +104,8 @@ public final class MockCloud extends Cloud {
 
     private static final class MockCloudSlave extends AbstractCloudSlave {
 
-        MockCloudSlave(int cnt, Node.Mode mode, int numExecutors, String labelString) throws FormException, IOException {
-            super("mock-slave-" + cnt, "Mock Slave", Util.createTempDir().getAbsolutePath(), numExecutors, mode, labelString, new MockSlaveLauncher(0, 0), numExecutors == 1 ? new OnceRetentionStrategy(1) : new CloudRetentionStrategy(1), Collections.<NodeProperty<?>>emptyList());
+        MockCloudSlave(String slaveName, Node.Mode mode, int numExecutors, String labelString) throws FormException, IOException {
+            super(slaveName, "Mock Slave", MockSlave.root(slaveName), numExecutors, mode, labelString, new MockSlaveLauncher(0, 0), numExecutors == 1 ? new OnceRetentionStrategy(1) : new CloudRetentionStrategy(1), Collections.<NodeProperty<?>>emptyList());
         }
 
         @Override public AbstractCloudComputer<?> createComputer() {
