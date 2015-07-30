@@ -3,7 +3,6 @@ package org.jenkinci.plugins.mock_slave;
 import hudson.model.Computer;
 import hudson.model.Node;
 import hudson.model.TaskListener;
-import hudson.remoting.Callable;
 import hudson.slaves.ComputerLauncher;
 import hudson.slaves.ComputerListener;
 import hudson.slaves.DumbSlave;
@@ -11,6 +10,7 @@ import hudson.slaves.NodeProperty;
 import hudson.slaves.RetentionStrategy;
 import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
+import jenkins.security.MasterToSlaveCallable;
 import static org.junit.Assert.*;
 import org.junit.Test;
 import org.junit.Rule;
@@ -38,8 +38,8 @@ public class MockSlaveLauncherTest {
         latch.await();
         assertEquals(43, slave.getChannel().call(new TestCallable()).intValue());
     }
-    private static class TestCallable implements Callable<Integer,Error> {
-        public Integer call() throws Error {
+    private static class TestCallable extends MasterToSlaveCallable<Integer,Error> {
+        @Override public Integer call() throws Error {
             return 43;
         }
     }
