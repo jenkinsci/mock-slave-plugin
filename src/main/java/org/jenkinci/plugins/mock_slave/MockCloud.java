@@ -58,7 +58,7 @@ public final class MockCloud extends Cloud {
     private static final AtomicInteger counter = new AtomicInteger();
 
     static {
-        // Make things happen more quickly so that we can test it interactively.
+        // JENKINS-24752: make things happen more quickly so that we can test it interactively.
         NodeProvisioner.NodeProvisionerInvoker.INITIALDELAY = 1000;
         NodeProvisioner.NodeProvisionerInvoker.RECURRENCEPERIOD = 1000;
     }
