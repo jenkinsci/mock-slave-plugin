@@ -43,6 +43,7 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import jenkins.model.Jenkins;
 import org.apache.commons.io.FileUtils;
 import org.codehaus.mojo.animal_sniffer.IgnoreJRERequirement;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -60,7 +61,7 @@ public class MockSlaveLauncher extends ComputerLauncher {
         this.bandwidth = bandwidth;
     }
 
-    @Override public void launch(SlaveComputer computer, TaskListener listener) throws IOException, InterruptedException {
+    @Override public void launch(final SlaveComputer computer, TaskListener listener) throws IOException, InterruptedException {
         listener.getLogger().println("Launching");
         File portFile = File.createTempFile("jenkins-port", "");
         final ProcessBuilder pb = new ProcessBuilder("java", "-jar", Which.jarFile(Which.class).getAbsolutePath(), "-tcp", portFile.getAbsolutePath());
@@ -84,10 +85,16 @@ public class MockSlaveLauncher extends ComputerLauncher {
         }
         computer.setChannel(is, os, listener.getLogger(), new Channel.Listener() {
             @Override public void onClosed(Channel channel, IOException cause) {
-                try {
-                    ProcessTree.get().killAll(proc, cookie);
-                } catch (InterruptedException e) {
-                    LOGGER.log(Level.INFO, "interrupted", e);
+                Jenkins j = Jenkins.getInstance();
+                if (j == null || j.isTerminating()) {
+                    LOGGER.log(Level.INFO, "Leaving processes running on {0} during shutdown", computer.getName());
+                } else {
+                    LOGGER.log(Level.FINE, "Killing any processes still running on {0}", computer.getName());
+                    try {
+                        ProcessTree.get().killAll(proc, cookie);
+                    } catch (InterruptedException e) {
+                        LOGGER.log(Level.INFO, "interrupted", e);
+                    }
                 }
             }
         });
