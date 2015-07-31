@@ -3,7 +3,7 @@
     <parent>
         <groupId>org.jenkins-ci.plugins</groupId>
         <artifactId>plugin</artifactId>
-        <version>1.554.3</version>
+        <version>1.609.1</version>
     </parent>
     <artifactId>mock-slave</artifactId>
     <version>1.7-SNAPSHOT</version>
@@ -27,7 +27,6 @@
             <plugin>
                 <groupId>org.jenkins-ci.tools</groupId>
                 <artifactId>maven-hpi-plugin</artifactId>
-                <version>1.106</version>
                 <configuration>
                     <loggers>
                         <org.jenkinci.plugins.mock_slave>FINE</org.jenkinci.plugins.mock_slave>
@@ -53,7 +52,7 @@
         <dependency>
             <groupId>org.jenkins-ci.plugins</groupId>
             <artifactId>durable-task</artifactId>
-            <version>0.5</version>
+            <version>1.5</version>
         </dependency>
     </dependencies>
 </project>
