@@ -42,7 +42,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.concurrent.Callable;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jenkinsci.plugins.durabletask.executors.OnceRetentionStrategy;
@@ -54,8 +53,6 @@ import org.kohsuke.stapler.DataBoundConstructor;
 public final class MockCloud extends Cloud {
 
     private static final Logger LOGGER = Logger.getLogger(MockCloud.class.getName());
-
-    private static final AtomicInteger counter = new AtomicInteger();
 
     static {
         // JENKINS-24752: make things happen more quickly so that we can test it interactively.
@@ -82,7 +79,7 @@ public final class MockCloud extends Cloud {
     @Override public Collection<NodeProvisioner.PlannedNode> provision(Label label, int excessWorkload) {
         Collection<NodeProvisioner.PlannedNode> r = new ArrayList<NodeProvisioner.PlannedNode>();
         while (excessWorkload > 0) {
-            final int cnt = counter.incrementAndGet();
+            final long cnt = ((DescriptorImpl) getDescriptor()).newNodeNumber();
             r.add(new NodeProvisioner.PlannedNode("Mock Slave #" + cnt, Computer.threadPoolForRemoting.submit(new Callable<Node>() {
                 @Override public Node call() throws Exception {
                     return new MockCloudSlave("mock-slave-" + cnt, mode, numExecutors, labelString);
@@ -95,6 +92,18 @@ public final class MockCloud extends Cloud {
     }
 
     @Extension public static final class DescriptorImpl extends Descriptor<Cloud> {
+
+        private long counter;
+
+        public DescriptorImpl() {
+            load();
+        }
+
+        synchronized long newNodeNumber() {
+            counter++;
+            save();
+            return counter;
+        }
 
         @Override public String getDisplayName() {
             return "Mock Cloud";
