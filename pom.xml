@@ -30,7 +30,7 @@
                 <configuration>
                     <loggers>
                         <org.jenkinci.plugins.mock_slave>FINE</org.jenkinci.plugins.mock_slave>
-                        <hudson.slaves>FINE</hudson.slaves>
+                        <!-- hudson.slaves.NodeProvisioner$2 run too noisy: <hudson.slaves>FINE</hudson.slaves> -->
                     </loggers>
                 </configuration>
             </plugin>
