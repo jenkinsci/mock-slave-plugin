@@ -26,11 +26,13 @@ package org.jenkinci.plugins.mock_slave;
 
 import hudson.EnvVars;
 import hudson.Extension;
+import hudson.model.Computer;
 import hudson.model.Descriptor;
 import hudson.model.TaskListener;
 import hudson.remoting.Channel;
 import hudson.remoting.Which;
 import hudson.slaves.ComputerLauncher;
+import hudson.slaves.ComputerListener;
 import hudson.slaves.SlaveComputer;
 import hudson.util.ProcessTree;
 import hudson.util.StreamCopyThread;
@@ -41,6 +43,9 @@ import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.util.Map;
+import java.util.WeakHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jenkins.model.Jenkins;
@@ -62,6 +67,7 @@ public class MockSlaveLauncher extends ComputerLauncher {
     }
 
     @Override public void launch(final SlaveComputer computer, TaskListener listener) throws IOException, InterruptedException {
+        Listener.launchTimes.put(computer, System.currentTimeMillis());
         listener.getLogger().println("Launching");
         File portFile = File.createTempFile("jenkins-port", "");
         final ProcessBuilder pb = new ProcessBuilder("java", "-jar", Which.jarFile(Which.class).getAbsolutePath(), "-tcp", portFile.getAbsolutePath());
@@ -114,6 +120,20 @@ public class MockSlaveLauncher extends ComputerLauncher {
     public static class DescriptorImpl extends Descriptor<ComputerLauncher> {
         public String getDisplayName() {
             return "Mock Slave Launcher";
+        }
+    }
+
+    @Extension
+    public static class Listener extends ComputerListener {
+        static final Map<Computer,Long> launchTimes = new WeakHashMap<Computer,Long>();
+        @Override
+        public void onOnline(Computer c, TaskListener listener) throws IOException, InterruptedException {
+            Long launchTime = launchTimes.remove(c);
+            if (launchTime != null) {
+                long seconds = TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis() - launchTime);
+                listener.getLogger().printf("Launched in %ds%n", seconds);
+                LOGGER.log(Level.INFO, "Launched {0} in {1}s", new Object[] {c.getName(), seconds});
+            }
         }
     }
 
