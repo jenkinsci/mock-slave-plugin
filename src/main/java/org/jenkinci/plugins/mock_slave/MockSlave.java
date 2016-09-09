@@ -43,7 +43,7 @@ public final class MockSlave extends Slave {
 
     /** Provides a predictable {@code remoteFS} unique for a given slave name and Jenkins instance. */
     static String root(String slaveName) {
-        return new File(new File(Jenkins.getInstance().getRootDir(), "mock-agents"), slaveName).getAbsolutePath();
+        return new File(new File(Jenkins.getActiveInstance().getRootDir(), "mock-agents"), slaveName).getAbsolutePath();
     }
     
     @Extension public static final class DescriptorImpl extends SlaveDescriptor {
