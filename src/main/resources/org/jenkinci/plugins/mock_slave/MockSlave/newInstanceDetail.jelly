@@ -25,5 +25,5 @@ THE SOFTWARE.
 
 <?jelly escape-by-default='true'?>
 <div>
-    A slave using a new temporary directory for its filesystem root and running on localhost.
+    An agent using a new temporary directory for its filesystem root and running on localhost.
 </div>
