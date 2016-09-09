@@ -25,10 +25,10 @@ THE SOFTWARE.
 
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:l="/lib/layout" xmlns:st="jelly:stapler">
-    <l:layout title="Cloud Slave">
+    <l:layout title="Cloud Agent">
         <st:include page="sidepanel.jelly"/>
         <l:main-panel>
-            This slave is ephemeral, so there is nothing to configure.
+            This agent is ephemeral, so there is nothing to configure.
         </l:main-panel>
     </l:layout>
 </j:jelly>

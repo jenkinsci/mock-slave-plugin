@@ -104,7 +104,7 @@ public class MockSlaveLauncher extends ComputerLauncher {
                 }
             }
         });
-        LOGGER.log(Level.INFO, "slave agent launched for {0}", computer.getDisplayName());
+        LOGGER.log(Level.INFO, "agent launched for {0}", computer.getDisplayName());
     }
 
     @IgnoreJRERequirement
@@ -119,7 +119,7 @@ public class MockSlaveLauncher extends ComputerLauncher {
     @Extension
     public static class DescriptorImpl extends Descriptor<ComputerLauncher> {
         public String getDisplayName() {
-            return "Mock Slave Launcher";
+            return "Mock Agent Launcher";
         }
     }
 

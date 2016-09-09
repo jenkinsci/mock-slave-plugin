@@ -80,14 +80,14 @@ public final class MockCloud extends Cloud {
         Collection<NodeProvisioner.PlannedNode> r = new ArrayList<NodeProvisioner.PlannedNode>();
         while (excessWorkload > 0) {
             final long cnt = ((DescriptorImpl) getDescriptor()).newNodeNumber();
-            r.add(new NodeProvisioner.PlannedNode("Mock Slave #" + cnt, Computer.threadPoolForRemoting.submit(new Callable<Node>() {
+            r.add(new NodeProvisioner.PlannedNode("Mock Agent #" + cnt, Computer.threadPoolForRemoting.submit(new Callable<Node>() {
                 @Override public Node call() throws Exception {
                     return new MockCloudSlave("mock-slave-" + cnt, mode, numExecutors, labelString);
                 }
             }), numExecutors));
             excessWorkload -= numExecutors;
         }
-        LOGGER.log(Level.FINE, "planning to provision {0} slaves", r.size());
+        LOGGER.log(Level.FINE, "planning to provision {0} agents", r.size());
         return r;
     }
 
@@ -114,7 +114,7 @@ public final class MockCloud extends Cloud {
     private static final class MockCloudSlave extends AbstractCloudSlave {
 
         MockCloudSlave(String slaveName, Node.Mode mode, int numExecutors, String labelString) throws FormException, IOException {
-            super(slaveName, "Mock Slave", MockSlave.root(slaveName), numExecutors, mode, labelString, new MockSlaveLauncher(0, 0), numExecutors == 1 ? new OnceRetentionStrategy(1) : new CloudRetentionStrategy(1), Collections.<NodeProperty<?>>emptyList());
+            super(slaveName, "Mock Agent", MockSlave.root(slaveName), numExecutors, mode, labelString, new MockSlaveLauncher(0, 0), numExecutors == 1 ? new OnceRetentionStrategy(1) : new CloudRetentionStrategy(1), Collections.<NodeProperty<?>>emptyList());
         }
 
         @Override public AbstractCloudComputer<?> createComputer() {
