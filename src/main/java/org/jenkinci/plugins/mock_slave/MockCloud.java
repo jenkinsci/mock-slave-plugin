@@ -37,6 +37,7 @@ import hudson.slaves.Cloud;
 import hudson.slaves.CloudRetentionStrategy;
 import hudson.slaves.NodeProperty;
 import hudson.slaves.NodeProvisioner;
+import hudson.util.FormValidation;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -44,8 +45,10 @@ import java.util.Collections;
 import java.util.concurrent.Callable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import javax.annotation.Nullable;
 import org.jenkinsci.plugins.durabletask.executors.OnceRetentionStrategy;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.QueryParameter;
 
 /**
  * Simple cloud that creates mock slaves on demand.
@@ -63,12 +66,26 @@ public final class MockCloud extends Cloud {
     public final Node.Mode mode;
     public final int numExecutors;
     public final String labelString;
+    /** only null when deserializing old configs */
+    private @Nullable Boolean oneShot;
 
-    @DataBoundConstructor public MockCloud(String name, Node.Mode mode, int numExecutors, String labelString) {
+    @DataBoundConstructor public MockCloud(String name, Node.Mode mode, int numExecutors, String labelString, boolean oneShot) {
         super(name);
         this.mode = mode;
         this.numExecutors = numExecutors;
         this.labelString = labelString;
+        this.oneShot = oneShot;
+    }
+
+    public boolean getOneShot() {
+        return oneShot;
+    }
+
+    private Object readResolve() {
+        if (oneShot == null) {
+            oneShot = numExecutors == 1;
+        }
+        return this;
     }
 
     @Override public boolean canProvision(Label label) {
@@ -82,7 +99,7 @@ public final class MockCloud extends Cloud {
             final long cnt = ((DescriptorImpl) getDescriptor()).newNodeNumber();
             r.add(new NodeProvisioner.PlannedNode("Mock Agent #" + cnt, Computer.threadPoolForRemoting.submit(new Callable<Node>() {
                 @Override public Node call() throws Exception {
-                    return new MockCloudSlave("mock-slave-" + cnt, mode, numExecutors, labelString);
+                    return new MockCloudSlave("mock-agent-" + cnt, mode, numExecutors, labelString, oneShot);
                 }
             }), numExecutors));
             excessWorkload -= numExecutors;
@@ -109,12 +126,20 @@ public final class MockCloud extends Cloud {
             return "Mock Cloud";
         }
 
+        public FormValidation doCheckOneShot(@QueryParameter int numExecutors, @QueryParameter boolean oneShot) {
+            if (oneShot && numExecutors != 1) {
+                return FormValidation.error("One-shot mode should only be used when agents have one executor apiece.");
+            } else {
+                return FormValidation.ok();
+            }
+        }
+
     }
 
     private static final class MockCloudSlave extends AbstractCloudSlave {
 
-        MockCloudSlave(String slaveName, Node.Mode mode, int numExecutors, String labelString) throws FormException, IOException {
-            super(slaveName, "Mock Agent", MockSlave.root(slaveName), numExecutors, mode, labelString, new MockSlaveLauncher(0, 0), numExecutors == 1 ? new OnceRetentionStrategy(1) : new CloudRetentionStrategy(1), Collections.<NodeProperty<?>>emptyList());
+        MockCloudSlave(String slaveName, Node.Mode mode, int numExecutors, String labelString, boolean oneShot) throws FormException, IOException {
+            super(slaveName, "Mock Agent", MockSlave.root(slaveName), numExecutors, mode, labelString, new MockSlaveLauncher(0, 0), oneShot ? new OnceRetentionStrategy(1) : new CloudRetentionStrategy(1), Collections.<NodeProperty<?>>emptyList());
         }
 
         @Override public AbstractCloudComputer<?> createComputer() {
