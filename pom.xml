@@ -3,7 +3,7 @@
     <parent>
         <groupId>org.jenkins-ci.plugins</groupId>
         <artifactId>plugin</artifactId>
-        <version>2.14</version>
+        <version>2.36</version>
         <relativePath />
     </parent>
     <artifactId>mock-slave</artifactId>
@@ -26,6 +26,7 @@
     <properties>
         <jenkins.version>1.609.3</jenkins.version>
         <java.level>6</java.level>
+        <jenkins-test-harness.version>2.29-20171005.210933-1</jenkins-test-harness.version> <!-- TODO https://github.com/jenkinsci/jenkins-test-harness/pull/77 -->
     </properties>
     <build>
         <plugins>
