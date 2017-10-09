@@ -28,6 +28,7 @@ import hudson.EnvVars;
 import hudson.Extension;
 import hudson.model.Computer;
 import hudson.model.Descriptor;
+import hudson.model.Slave;
 import hudson.model.TaskListener;
 import hudson.remoting.Channel;
 import hudson.remoting.Which;
@@ -70,7 +71,13 @@ public class MockSlaveLauncher extends ComputerLauncher {
         Listener.launchTimes.put(computer, System.currentTimeMillis());
         listener.getLogger().println("Launching");
         File portFile = File.createTempFile("jenkins-port", "");
-        final ProcessBuilder pb = new ProcessBuilder("java", "-jar", Which.jarFile(Which.class).getAbsolutePath(), "-tcp", portFile.getAbsolutePath());
+        File slaveJar = Which.jarFile(Which.class);
+        if (!slaveJar.isFile()) {
+            slaveJar = File.createTempFile("slave", ".jar");
+            slaveJar.deleteOnExit();
+            FileUtils.copyURLToFile(new Slave.JnlpJar("slave.jar").getURL(), slaveJar);
+        }
+        final ProcessBuilder pb = new ProcessBuilder("java", "-jar", slaveJar.getAbsolutePath(), "-tcp", portFile.getAbsolutePath());
         final EnvVars cookie = EnvVars.createCookie();
         pb.environment().putAll(cookie);
         final Process proc = pb.start();
