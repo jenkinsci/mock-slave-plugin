@@ -26,7 +26,7 @@
     <properties>
         <jenkins.version>1.609.3</jenkins.version>
         <java.level>6</java.level>
-        <jenkins-test-harness.version>2.29-20171005.210933-1</jenkins-test-harness.version> <!-- TODO https://github.com/jenkinsci/jenkins-test-harness/pull/77 -->
+        <jenkins-test-harness.version>2.29</jenkins-test-harness.version>
     </properties>
     <build>
         <plugins>
