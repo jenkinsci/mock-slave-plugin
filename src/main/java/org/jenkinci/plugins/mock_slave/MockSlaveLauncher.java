@@ -70,32 +70,41 @@ public class MockSlaveLauncher extends ComputerLauncher {
     @Override public void launch(final SlaveComputer computer, TaskListener listener) throws IOException, InterruptedException {
         Listener.launchTimes.put(computer, System.currentTimeMillis());
         listener.getLogger().println("Launching");
-        File portFile = File.createTempFile("jenkins-port", "");
         File slaveJar = Which.jarFile(Which.class);
         if (!slaveJar.isFile()) {
             slaveJar = File.createTempFile("slave", ".jar");
             slaveJar.deleteOnExit();
             FileUtils.copyURLToFile(new Slave.JnlpJar("slave.jar").getURL(), slaveJar);
         }
-        final ProcessBuilder pb = new ProcessBuilder("java", "-jar", slaveJar.getAbsolutePath(), "-tcp", portFile.getAbsolutePath());
         final EnvVars cookie = EnvVars.createCookie();
-        pb.environment().putAll(cookie);
-        final Process proc = pb.start();
-        new StreamCopyThread("stderr copier for remote agent on " + computer.getDisplayName(), proc.getErrorStream(), listener.getLogger()).start();
-        while (portFile.length() == 0) {
-            Thread.sleep(100);
-        }
-        int port = Integer.parseInt(FileUtils.readFileToString(portFile));
-        listener.getLogger().println("connecting to localhost:" + port);
-        Socket s = new Socket(getLoopbackAddress(), port);
-        InputStream is = s.getInputStream();
-        OutputStream os = s.getOutputStream();
+        InputStream is;
+        OutputStream os;
+        final Process proc;
         if (latency > 0 || bandwidth > 0) {
+            File portFile = File.createTempFile("jenkins-port", "");
+            final ProcessBuilder pb = new ProcessBuilder("java", "-jar", slaveJar.getAbsolutePath(), "-tcp", portFile.getAbsolutePath());
+            pb.environment().putAll(cookie);
+            proc = pb.start();
+            while (portFile.length() == 0) {
+                Thread.sleep(100);
+            }
+            int port = Integer.parseInt(FileUtils.readFileToString(portFile));
+            listener.getLogger().println("connecting to localhost:" + port);
+            Socket s = new Socket(getLoopbackAddress(), port);
+            is = s.getInputStream();
+            os = s.getOutputStream();
             listener.getLogger().printf("throttling with latency=%dms bandwidth=%dbps%n", latency, bandwidth);
             Throttler t = new Throttler(latency, bandwidth, is, os);
             is = t.is();
             os = t.os();
+        } else {
+            ProcessBuilder pb = new ProcessBuilder("java", "-jar", slaveJar.getAbsolutePath());
+            pb.environment().putAll(cookie);
+            proc = pb.start();
+            is = proc.getInputStream();
+            os = proc.getOutputStream();
         }
+        new StreamCopyThread("stderr copier for remote agent on " + computer.getDisplayName(), proc.getErrorStream(), listener.getLogger()).start();
         computer.setChannel(is, os, listener.getLogger(), new Channel.Listener() {
             @Override public void onClosed(Channel channel, IOException cause) {
                 Jenkins j = Jenkins.getInstance();
