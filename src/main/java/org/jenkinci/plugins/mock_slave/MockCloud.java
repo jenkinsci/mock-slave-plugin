@@ -46,6 +46,7 @@ import java.util.concurrent.Callable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.annotation.Nullable;
+import org.jenkinsci.Symbol;
 import org.jenkinsci.plugins.durabletask.executors.OnceRetentionStrategy;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
@@ -108,6 +109,7 @@ public final class MockCloud extends Cloud {
         return r;
     }
 
+    @Symbol("mock")
     @Extension public static final class DescriptorImpl extends Descriptor<Cloud> {
 
         private long counter;
