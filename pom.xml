@@ -3,14 +3,14 @@
     <parent>
         <groupId>org.jenkins-ci.plugins</groupId>
         <artifactId>plugin</artifactId>
-        <version>2.36</version>
+        <version>3.21</version>
         <relativePath />
     </parent>
     <artifactId>mock-slave</artifactId>
-    <version>1.13-SNAPSHOT</version>
+    <version>${revision}${changelist}</version>
     <packaging>hpi</packaging>
     <name>Mock Agent Plugin</name>
-    <url>https://wiki.jenkins-ci.org/display/JENKINS/Mock+Slave+Plugin</url>
+    <url>https://wiki.jenkins.io/display/JENKINS/Mock+Agent+Plugin</url>
     <licenses>
         <license>
             <name>MIT License</name>
@@ -21,12 +21,13 @@
         <connection>scm:git:git://github.com/jenkinsci/${project.artifactId}-plugin.git</connection>
         <developerConnection>scm:git:git@github.com:jenkinsci/${project.artifactId}-plugin.git</developerConnection>
         <url>https://github.com/jenkinsci/${project.artifactId}-plugin</url>
-        <tag>HEAD</tag>
+        <tag>${scmTag}</tag>
     </scm>
     <properties>
-        <jenkins.version>1.609.3</jenkins.version>
-        <java.level>6</java.level>
-        <jenkins-test-harness.version>2.29</jenkins-test-harness.version>
+        <revision>1.13</revision>
+        <changelist>-SNAPSHOT</changelist>
+        <jenkins.version>2.60.3</jenkins.version>
+        <java.level>8</java.level>
     </properties>
     <build>
         <plugins>
@@ -59,6 +60,17 @@
             <groupId>org.jenkins-ci.plugins</groupId>
             <artifactId>durable-task</artifactId>
             <version>1.5</version>
+        </dependency>
+        <dependency>
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>structs</artifactId>
+            <version>1.14</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jenkins</groupId>
+            <artifactId>configuration-as-code</artifactId>
+            <version>1.0-rc3</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 </project>

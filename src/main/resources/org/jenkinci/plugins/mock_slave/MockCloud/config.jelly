@@ -29,10 +29,10 @@ THE SOFTWARE.
         <f:textbox default="mock"/>
     </f:entry>
     <f:slave-mode name="mode" node="${it}"/>
-    <f:entry field="numExecutors" title="# of Executors">
+    <f:entry field="executors" title="# of Executors">
         <f:number clazz="positive-number" min="1" step="1" default="1"/>
     </f:entry>
-    <f:entry field="labelString" title="Labels">
+    <f:entry field="labels" title="Labels">
         <f:textbox/>
     </f:entry>
     <f:entry field="oneShot" title="One-shot Agents">

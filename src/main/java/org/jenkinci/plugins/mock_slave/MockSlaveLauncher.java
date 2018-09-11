@@ -52,6 +52,7 @@ import java.util.logging.Logger;
 import jenkins.model.Jenkins;
 import org.apache.commons.io.FileUtils;
 import org.codehaus.mojo.animal_sniffer.IgnoreJRERequirement;
+import org.jenkinsci.Symbol;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 public class MockSlaveLauncher extends ComputerLauncher {
@@ -132,6 +133,7 @@ public class MockSlaveLauncher extends ComputerLauncher {
         }
     }
 
+    @Symbol("mock")
     @Extension
     public static class DescriptorImpl extends Descriptor<ComputerLauncher> {
         public String getDisplayName() {

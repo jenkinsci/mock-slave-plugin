@@ -33,6 +33,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.List;
 import jenkins.model.Jenkins;
+import org.jenkinsci.Symbol;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 public final class MockSlave extends Slave {
@@ -46,6 +47,7 @@ public final class MockSlave extends Slave {
         return new File(new File(Jenkins.getActiveInstance().getRootDir(), "mock-agents"), slaveName).getAbsolutePath();
     }
     
+    @Symbol("mock")
     @Extension public static final class DescriptorImpl extends SlaveDescriptor {
 
         @Override public String getDisplayName() {

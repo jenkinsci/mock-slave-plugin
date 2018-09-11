@@ -1,0 +1,5 @@
+jenkins:
+  numExecutors: 0
+  clouds:
+    - mock:
+        name: 'mock'

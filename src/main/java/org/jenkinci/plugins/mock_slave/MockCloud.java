@@ -24,7 +24,9 @@
 
 package org.jenkinci.plugins.mock_slave;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
+import hudson.Util;
 import hudson.model.Computer;
 import hudson.model.Descriptor;
 import hudson.model.Descriptor.FormException;
@@ -42,12 +44,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.concurrent.Callable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import javax.annotation.Nullable;
+import org.jenkinsci.Symbol;
 import org.jenkinsci.plugins.durabletask.executors.OnceRetentionStrategy;
 import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
 
 /**
@@ -57,28 +59,37 @@ public final class MockCloud extends Cloud {
 
     private static final Logger LOGGER = Logger.getLogger(MockCloud.class.getName());
 
-    static {
-        // JENKINS-24752: make things happen more quickly so that we can test it interactively.
-        NodeProvisioner.NodeProvisionerInvoker.INITIALDELAY = 1000;
-        NodeProvisioner.NodeProvisionerInvoker.RECURRENCEPERIOD = 1000;
+    @DataBoundSetter public Node.Mode mode = Node.Mode.NORMAL;
+    private int numExecutors = 1; // field had a poor name
+    private String labelString = ""; // field had a poor name
+    private Boolean oneShot = true; // reading null for compatibility
+
+    @DataBoundConstructor public MockCloud(String name) {
+        super(name);
     }
 
-    public final Node.Mode mode;
-    public final int numExecutors;
-    public final String labelString;
-    /** only null when deserializing old configs */
-    private @Nullable Boolean oneShot;
+    public String getLabels() {
+        return labelString;
+    }
 
-    @DataBoundConstructor public MockCloud(String name, Node.Mode mode, int numExecutors, String labelString, boolean oneShot) {
-        super(name);
-        this.mode = mode;
-        this.numExecutors = numExecutors;
-        this.labelString = labelString;
-        this.oneShot = oneShot;
+    @DataBoundSetter public void setLabels(String labels) {
+        labelString = Util.fixNull(labels);
     }
 
     public boolean getOneShot() {
         return oneShot;
+    }
+
+    @DataBoundSetter public void setOneShot(boolean oneShot) {
+        this.oneShot = oneShot;
+    }
+
+    public int getExecutors() {
+        return numExecutors;
+    }
+
+    @DataBoundSetter public void setExecutors(int executors) {
+        numExecutors = executors;
     }
 
     private Object readResolve() {
@@ -94,26 +105,27 @@ public final class MockCloud extends Cloud {
     }
 
     @Override public Collection<NodeProvisioner.PlannedNode> provision(Label label, int excessWorkload) {
-        Collection<NodeProvisioner.PlannedNode> r = new ArrayList<NodeProvisioner.PlannedNode>();
+        Collection<NodeProvisioner.PlannedNode> r = new ArrayList<>();
         while (excessWorkload > 0) {
             final long cnt = ((DescriptorImpl) getDescriptor()).newNodeNumber();
-            r.add(new NodeProvisioner.PlannedNode("Mock Agent #" + cnt, Computer.threadPoolForRemoting.submit(new Callable<Node>() {
-                @Override public Node call() throws Exception {
-                    return new MockCloudSlave("mock-agent-" + cnt, mode, numExecutors, labelString, oneShot);
-                }
-            }), numExecutors));
+            r.add(new NodeProvisioner.PlannedNode("Mock Agent #" + cnt, Computer.threadPoolForRemoting.submit(() -> new MockCloudSlave("mock-agent-" + cnt, mode, numExecutors, labelString, oneShot)), numExecutors));
             excessWorkload -= numExecutors;
         }
         LOGGER.log(Level.FINE, "planning to provision {0} agents", r.size());
         return r;
     }
 
+    @Symbol("mock")
     @Extension public static final class DescriptorImpl extends Descriptor<Cloud> {
 
         private long counter;
 
+        @SuppressFBWarnings(value = "ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD", justification = "actually a singleton")
         public DescriptorImpl() {
             load();
+            // JENKINS-24752: make things happen more quickly so that we can test it interactively.
+            NodeProvisioner.NodeProvisionerInvoker.INITIALDELAY = 1000;
+            NodeProvisioner.NodeProvisionerInvoker.RECURRENCEPERIOD = 1000;
         }
 
         synchronized long newNodeNumber() {
@@ -126,8 +138,8 @@ public final class MockCloud extends Cloud {
             return "Mock Cloud";
         }
 
-        public FormValidation doCheckOneShot(@QueryParameter int numExecutors, @QueryParameter boolean oneShot) {
-            if (oneShot && numExecutors != 1) {
+        public FormValidation doCheckOneShot(@QueryParameter int executors, @QueryParameter boolean oneShot) {
+            if (oneShot && executors != 1) {
                 return FormValidation.error("One-shot mode should only be used when agents have one executor apiece.");
             } else {
                 return FormValidation.ok();
