@@ -34,6 +34,7 @@ import static org.junit.Assert.*;
 import org.junit.Rule;
 import org.jvnet.hudson.test.BuildWatcher;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.SleepBuilder;
 
 public class ConfigAsCodeTest {
 
@@ -54,6 +55,17 @@ public class ConfigAsCodeTest {
         p.setAssignedLabel(null); // sets canRoam
         FreeStyleBuild b = r.buildAndAssertSuccess(p);
         assertNotEquals("", b.getBuiltOnStr());
+    }
+
+    @Test public void export() throws Exception {
+        r.jenkins.setNumExecutors(0);
+        r.jenkins.clouds.add(new MockCloud("mock"));
+        FreeStyleProject p = r.createFreeStyleProject();
+        p.setAssignedLabel(null);
+        p.getBuildersList().add(new SleepBuilder(Long.MAX_VALUE));
+        FreeStyleBuild b = p.scheduleBuild2(0).waitForStart();
+        r.waitForMessage("Sleeping", b);
+        ConfigurationAsCode.get().export(System.out);
     }
 
 }
