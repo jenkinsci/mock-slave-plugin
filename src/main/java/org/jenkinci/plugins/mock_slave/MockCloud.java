@@ -162,6 +162,14 @@ public final class MockCloud extends Cloud {
             // need do nothing
         }
 
+        @Extension public static final class DescriptorImpl extends SlaveDescriptor {
+
+            @Override public boolean isInstantiable() {
+                return false;
+            }
+
+        }
+
     }
 
     private static final class MockCloudComputer extends AbstractCloudComputer<MockCloudSlave> {
