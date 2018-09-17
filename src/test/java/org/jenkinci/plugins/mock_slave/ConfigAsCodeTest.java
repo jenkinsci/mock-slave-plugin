@@ -58,6 +58,7 @@ public class ConfigAsCodeTest {
     }
 
     @Test public void export() throws Exception {
+        r.jenkins.setCrumbIssuer(null); // TestCrumbIssuer noise
         r.jenkins.setNumExecutors(0);
         r.jenkins.clouds.add(new MockCloud("mock"));
         FreeStyleProject p = r.createFreeStyleProject();
