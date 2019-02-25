@@ -69,7 +69,7 @@
         <dependency>
             <groupId>io.jenkins</groupId>
             <artifactId>configuration-as-code</artifactId>
-            <version>1.6</version> <!-- TODO https://github.com/jenkinsci/configuration-as-code-plugin/pull/524 -->
+            <version>1.6</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
