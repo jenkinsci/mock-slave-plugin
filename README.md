@@ -1,1 +1,1 @@
-See [wiki](https://wiki.jenkins-ci.org/display/JENKINS/Mock+Slave+Plugin).
+See [wiki](https://wiki.jenkins.io/display/JENKINS/Mock+Agent+Plugin).
