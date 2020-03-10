@@ -10,7 +10,7 @@
     <version>${revision}${changelist}</version>
     <packaging>hpi</packaging>
     <name>Mock Agent Plugin</name>
-    <url>https://wiki.jenkins.io/display/JENKINS/Mock+Agent+Plugin</url>
+    <url>https://github.com/jenkinsci/mock-slave-plugin</url>
     <licenses>
         <license>
             <name>MIT License</name>
