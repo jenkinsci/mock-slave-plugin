@@ -7,7 +7,7 @@
         <relativePath />
     </parent>
     <artifactId>mock-slave</artifactId>
-    <version>1.14</version>
+    <version>${revision}${changelist}</version>
     <packaging>hpi</packaging>
     <name>Mock Agent Plugin</name>
     <url>https://github.com/jenkinsci/mock-slave-plugin</url>
@@ -21,10 +21,10 @@
         <connection>scm:git:git://github.com/jenkinsci/${project.artifactId}-plugin.git</connection>
         <developerConnection>scm:git:git@github.com:jenkinsci/${project.artifactId}-plugin.git</developerConnection>
         <url>https://github.com/jenkinsci/${project.artifactId}-plugin</url>
-        <tag>mock-slave-1.14</tag>
+        <tag>${scmTag}</tag>
     </scm>
     <properties>
-        <revision>1.14</revision>
+        <revision>1.15</revision>
         <changelist>-SNAPSHOT</changelist>
         <jenkins.version>2.60.3</jenkins.version>
         <java.level>8</java.level>
