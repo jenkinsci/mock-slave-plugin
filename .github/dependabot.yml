@@ -1,0 +1,14 @@
+version: 2
+updates:
+- package-ecosystem: maven
+  directory: "/"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 10
+  ignore:
+  - dependency-name: org.jenkins-ci.plugins:durable-task
+    versions:
+    - "> 1.5"
+  - dependency-name: org.jenkins-ci.plugins:structs
+    versions:
+    - "> 1.14"
