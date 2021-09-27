@@ -3,7 +3,7 @@
     <parent>
         <groupId>org.jenkins-ci.plugins</groupId>
         <artifactId>plugin</artifactId>
-        <version>4.26</version>
+        <version>4.27</version>
         <relativePath />
     </parent>
     <artifactId>mock-slave</artifactId>
@@ -25,7 +25,7 @@
     </scm>
     <properties>
         <changelist>999999-SNAPSHOT</changelist>
-        <jenkins.version>2.235.5</jenkins.version>
+        <jenkins.version>2.277.4</jenkins.version>
         <java.level>8</java.level>
     </properties>
     <build>
@@ -62,8 +62,8 @@
         <dependencies>
             <dependency>
                 <groupId>io.jenkins.tools.bom</groupId>
-                <artifactId>bom-2.235.x</artifactId>
-                <version>918.vae501d2cdc99</version>
+                <artifactId>bom-2.277.x</artifactId>
+                <version>950.v396cb834de1e</version>
                 <scope>import</scope>
                 <type>pom</type>
             </dependency>

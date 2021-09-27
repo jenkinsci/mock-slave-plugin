@@ -24,15 +24,22 @@
 
 package org.jenkinci.plugins.mock_slave;
 
+import com.gargoylesoftware.htmlunit.html.HtmlForm;
+import com.gargoylesoftware.htmlunit.html.HtmlPage;
+import com.gargoylesoftware.htmlunit.html.HtmlRadioButtonInput;
+import com.gargoylesoftware.htmlunit.html.HtmlTextInput;
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
 import hudson.model.Node;
 import hudson.slaves.NodeProperty;
 import hudson.slaves.RetentionStrategy;
 import java.util.Collections;
-import static org.junit.Assert.*;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.isA;
+import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 import org.junit.Rule;
+import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
 
 public class MockSlaveTest {
@@ -46,6 +53,21 @@ public class MockSlaveTest {
         j.setAssignedNode(slave);
         FreeStyleBuild b = r.assertBuildStatusSuccess(j.scheduleBuild2(0));
         assertEquals(slave, b.getBuiltOn());
+    }
+
+    @Issue("JENKINS-66742")
+    @Test public void guiCreation() throws Exception {
+        JenkinsRule.WebClient wc = r.createWebClient();
+        HtmlPage computerNewPage = wc.goTo("computer/new");
+        HtmlForm createItemForm = computerNewPage.getFormByName("createItem");
+        HtmlTextInput nameText = createItemForm.getInputByName("name");
+        nameText.setText("xxx");
+        HtmlRadioButtonInput modeRadio = createItemForm.getInputByValue("org.jenkinci.plugins.mock_slave.MockSlave");
+        modeRadio.setChecked(true);
+        HtmlPage createItemPage = r.submit(createItemForm);
+        HtmlForm configForm = createItemPage.getFormByName("config");
+        r.submit(configForm);
+        assertThat(r.jenkins.getNode("xxx"), isA(MockSlave.class));
     }
 
 }
