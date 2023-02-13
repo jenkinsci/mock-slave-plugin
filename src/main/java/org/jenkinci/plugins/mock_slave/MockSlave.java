@@ -27,24 +27,21 @@ package org.jenkinci.plugins.mock_slave;
 import hudson.Extension;
 import hudson.model.Descriptor;
 import hudson.model.Slave;
-import hudson.slaves.NodeProperty;
-import hudson.slaves.RetentionStrategy;
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
 import jenkins.model.Jenkins;
 import org.jenkinsci.Symbol;
 import org.kohsuke.stapler.DataBoundConstructor;
 
 public final class MockSlave extends Slave {
 
-    @DataBoundConstructor public MockSlave(String name, int numExecutors, Mode mode, String labelString, RetentionStrategy<?> retentionStrategy, List<? extends NodeProperty<?>> nodeProperties) throws IOException, Descriptor.FormException {
-    	super(name, "", root(name), numExecutors, mode, labelString, new MockSlaveLauncher(0, 0), retentionStrategy, nodeProperties);
+    @DataBoundConstructor public MockSlave(String name) throws IOException, Descriptor.FormException {
+        super(name, root(name), new MockSlaveLauncher(0, 0));
     }
 
     /** Provides a predictable {@code remoteFS} unique for a given slave name and Jenkins instance. */
     static String root(String slaveName) {
-        return new File(new File(Jenkins.getActiveInstance().getRootDir(), "mock-agents"), slaveName).getAbsolutePath();
+        return new File(new File(Jenkins.get().getRootDir(), "mock-agents"), slaveName).getAbsolutePath();
     }
     
     @Symbol("mock")

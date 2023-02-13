@@ -37,13 +37,11 @@ import hudson.slaves.AbstractCloudComputer;
 import hudson.slaves.AbstractCloudSlave;
 import hudson.slaves.Cloud;
 import hudson.slaves.CloudRetentionStrategy;
-import hudson.slaves.NodeProperty;
 import hudson.slaves.NodeProvisioner;
 import hudson.util.FormValidation;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.jenkinsci.Symbol;
@@ -99,16 +97,26 @@ public final class MockCloud extends Cloud {
         return this;
     }
 
-    @Override public boolean canProvision(Label label) {
+    @Override public boolean canProvision(Cloud.CloudState state) {
+        Label label = state.getLabel();
         LOGGER.log(Level.FINE, "checking whether we can provision {0}", label);
         return label == null ? mode == Node.Mode.NORMAL : label.matches(Label.parse(labelString));
     }
 
-    @Override public Collection<NodeProvisioner.PlannedNode> provision(Label label, int excessWorkload) {
+    @Override public Collection<NodeProvisioner.PlannedNode> provision(CloudState state, int excessWorkload) {
+        Label label = state.getLabel();
         Collection<NodeProvisioner.PlannedNode> r = new ArrayList<>();
         while (excessWorkload > 0) {
             final long cnt = ((DescriptorImpl) getDescriptor()).newNodeNumber();
-            r.add(new NodeProvisioner.PlannedNode("Mock Agent #" + cnt, Computer.threadPoolForRemoting.submit(() -> new MockCloudSlave("mock-agent-" + cnt, mode, numExecutors, labelString, oneShot)), numExecutors));
+            r.add(new NodeProvisioner.PlannedNode("Mock Agent #" + cnt, Computer.threadPoolForRemoting.submit(() -> {
+                MockCloudSlave agent = new MockCloudSlave("mock-agent-" + cnt);
+                agent.setNodeDescription("Mock agent #" + cnt);
+                agent.setMode(mode);
+                agent.setNumExecutors(numExecutors);
+                agent.setLabelString(labelString);
+                agent.setRetentionStrategy(oneShot ? new OnceRetentionStrategy(1) : new CloudRetentionStrategy(1));
+                return agent;
+            }), numExecutors));
             excessWorkload -= numExecutors;
         }
         LOGGER.log(Level.FINE, "planning to provision {0} agents", r.size());
@@ -150,8 +158,8 @@ public final class MockCloud extends Cloud {
 
     private static final class MockCloudSlave extends AbstractCloudSlave {
 
-        MockCloudSlave(String slaveName, Node.Mode mode, int numExecutors, String labelString, boolean oneShot) throws FormException, IOException {
-            super(slaveName, "Mock Agent", MockSlave.root(slaveName), numExecutors, mode, labelString, new MockSlaveLauncher(0, 0), oneShot ? new OnceRetentionStrategy(1) : new CloudRetentionStrategy(1), Collections.<NodeProperty<?>>emptyList());
+        private MockCloudSlave(String slaveName) throws FormException, IOException {
+            super(slaveName, MockSlave.root(slaveName), new MockSlaveLauncher(0, 0));
         }
 
         @Override public AbstractCloudComputer<?> createComputer() {
