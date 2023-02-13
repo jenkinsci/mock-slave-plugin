@@ -223,7 +223,7 @@ public final class MockCloud extends Cloud {
                 }
                 proc = new ProcessBuilder(
                         "java", "-jar", agentJar.getAbsolutePath(),
-                        "-jnlpUrl", JenkinsLocationConfiguration.get().getUrl() + computer.getUrl() + "slave-agent.jnlp",
+                        "-jnlpUrl", JenkinsLocationConfiguration.get().getUrl() + computer.getUrl() + "jenkins-agent.jnlp",
                         "-secret", computer.getJnlpMac()).
                     redirectErrorStream(true).
                     start();
