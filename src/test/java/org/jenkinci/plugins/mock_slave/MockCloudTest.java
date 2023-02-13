@@ -32,12 +32,14 @@ import hudson.model.Computer;
 import hudson.model.Label;
 import java.io.IOException;
 import java.util.logging.Level;
+import jenkins.model.Jenkins;
 import org.awaitility.Awaitility;
 import static org.hamcrest.Matchers.empty;
 import org.junit.Rule;
 import org.junit.Test;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.LoggerRule;
+import org.jvnet.hudson.test.MockAuthorizationStrategy;
 import org.jvnet.hudson.test.PrefixedOutputStream;
 import org.jvnet.hudson.test.TailLog;
 import org.jvnet.hudson.test.TestBuilder;
@@ -58,6 +60,8 @@ public class MockCloudTest {
     }
 
     private void smokeTest(MockCloud cloud) throws Exception {
+        r.jenkins.setSecurityRealm(r.createDummySecurityRealm());
+        r.jenkins.setAuthorizationStrategy(new MockAuthorizationStrategy().grant(Jenkins.ADMINISTER).everywhere().toAuthenticated());
         cloud.setLabels("mock");
         r.jenkins.clouds.add(cloud);
         var p = r.createFreeStyleProject("p");
