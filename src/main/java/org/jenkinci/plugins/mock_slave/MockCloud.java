@@ -26,24 +26,35 @@ package org.jenkinci.plugins.mock_slave;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
+import hudson.Functions;
 import hudson.Util;
 import hudson.model.Computer;
 import hudson.model.Descriptor;
 import hudson.model.Descriptor.FormException;
 import hudson.model.Label;
 import hudson.model.Node;
+import hudson.model.Slave;
 import hudson.model.TaskListener;
 import hudson.slaves.AbstractCloudComputer;
 import hudson.slaves.AbstractCloudSlave;
 import hudson.slaves.Cloud;
 import hudson.slaves.CloudRetentionStrategy;
+import hudson.slaves.JNLPLauncher;
 import hudson.slaves.NodeProvisioner;
+import hudson.slaves.SlaveComputer;
 import hudson.util.FormValidation;
+import hudson.util.StreamCopyThread;
+import java.io.File;
 import java.io.IOException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import jenkins.model.Jenkins;
+import jenkins.model.JenkinsLocationConfiguration;
+import org.apache.commons.io.FileUtils;
 import org.jenkinsci.Symbol;
 import org.jenkinsci.plugins.durabletask.executors.OnceRetentionStrategy;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -61,6 +72,8 @@ public final class MockCloud extends Cloud {
     private int numExecutors = 1; // field had a poor name
     private String labelString = ""; // field had a poor name
     private Boolean oneShot = true; // reading null for compatibility
+    private boolean inbound;
+    // TODO could also support WebSocket
 
     @DataBoundConstructor public MockCloud(String name) {
         super(name);
@@ -90,6 +103,14 @@ public final class MockCloud extends Cloud {
         numExecutors = executors;
     }
 
+    public boolean isInbound() {
+        return inbound;
+    }
+
+    @DataBoundSetter public void setInbound(boolean inbound) {
+        this.inbound = inbound;
+    }
+
     private Object readResolve() {
         if (oneShot == null) {
             oneShot = numExecutors == 1;
@@ -104,11 +125,13 @@ public final class MockCloud extends Cloud {
     }
 
     @Override public Collection<NodeProvisioner.PlannedNode> provision(CloudState state, int excessWorkload) {
+        int originalExcessWorkload = excessWorkload;
+        LOGGER.fine(() -> "label=" + state.getLabel() + " additionalPlannedCapacity=" + state.getAdditionalPlannedCapacity() + " excessWorkload=" + originalExcessWorkload);
         Collection<NodeProvisioner.PlannedNode> r = new ArrayList<>();
         while (excessWorkload > 0) {
             final long cnt = ((DescriptorImpl) getDescriptor()).newNodeNumber();
             r.add(new NodeProvisioner.PlannedNode("Mock Agent #" + cnt, Computer.threadPoolForRemoting.submit(() -> {
-                MockCloudSlave agent = new MockCloudSlave("mock-agent-" + cnt);
+                MockCloudSlave agent = new MockCloudSlave("mock-agent-" + cnt, inbound);
                 agent.setNodeDescription("Mock agent #" + cnt);
                 agent.setMode(mode);
                 agent.setNumExecutors(numExecutors);
@@ -157,8 +180,8 @@ public final class MockCloud extends Cloud {
 
     private static final class MockCloudSlave extends AbstractCloudSlave {
 
-        private MockCloudSlave(String slaveName) throws FormException, IOException {
-            super(slaveName, MockSlave.root(slaveName), new MockSlaveLauncher(0, 0));
+        private MockCloudSlave(String slaveName, boolean inbound) throws FormException, IOException {
+            super(slaveName, MockSlave.root(slaveName), inbound ? new MockInboundLauncher() : new MockSlaveLauncher(0, 0));
         }
 
         @Override public AbstractCloudComputer<?> createComputer() {
@@ -175,6 +198,48 @@ public final class MockCloud extends Cloud {
                 return false;
             }
 
+        }
+
+    }
+
+    private static final class MockInboundLauncher extends JNLPLauncher {
+
+        private transient Process proc;
+
+        MockInboundLauncher() {
+            super(false);
+        }
+
+        @Override public boolean isLaunchSupported() {
+            return proc == null;
+        }
+
+        @Override public void launch(SlaveComputer computer, TaskListener listener) {
+            LOGGER.fine(() -> "launching agent for " + computer.getName());
+            try {
+                File agentJar = new File(Jenkins.get().getRootDir(), "agent.jar");
+                if (!agentJar.isFile()) {
+                    FileUtils.copyURLToFile(new Slave.JnlpJar("agent.jar").getURL(), agentJar);
+                }
+                proc = new ProcessBuilder(
+                        "java", "-jar", agentJar.getAbsolutePath(),
+                        "-jnlpUrl", JenkinsLocationConfiguration.get().getUrl() + computer.getUrl() + "slave-agent.jnlp",
+                        "-secret", computer.getJnlpMac()).
+                    redirectErrorStream(true).
+                    start();
+                new StreamCopyThread("I/O of " + computer.getName(), proc.getInputStream(), listener.getLogger()).start();
+                Instant max = Instant.now().plus(Duration.ofSeconds(15));
+                while (computer.isOffline() && Instant.now().isBefore(max)) {
+                    Thread.sleep(100);
+                }
+            } catch (Exception x) {
+                Functions.printStackTrace(x, listener.error("Failed to launch"));
+            }
+        }
+
+        @Override public void afterDisconnect(SlaveComputer computer, TaskListener listener) {
+            LOGGER.fine(() -> "terminating agent for " + computer.getName());
+            proc.destroy();
         }
 
     }
