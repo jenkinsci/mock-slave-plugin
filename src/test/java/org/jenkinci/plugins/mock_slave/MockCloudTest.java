@@ -24,6 +24,7 @@
 
 package org.jenkinci.plugins.mock_slave;
 
+import hudson.Functions;
 import hudson.Launcher;
 import hudson.model.AbstractBuild;
 import hudson.model.BuildListener;
@@ -87,6 +88,10 @@ public class MockCloudTest {
             tail.waitForCompletion();
         }
         Awaitility.await().until(() -> r.jenkins.getNodes(), empty());
+        if (Functions.isWindows()) {
+            // Need to wait for Tailer to close the log file.
+            Thread.sleep(5_000);
+        }
     }
 
 }
