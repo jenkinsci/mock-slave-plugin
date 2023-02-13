@@ -104,7 +104,6 @@ public final class MockCloud extends Cloud {
     }
 
     @Override public Collection<NodeProvisioner.PlannedNode> provision(CloudState state, int excessWorkload) {
-        Label label = state.getLabel();
         Collection<NodeProvisioner.PlannedNode> r = new ArrayList<>();
         while (excessWorkload > 0) {
             final long cnt = ((DescriptorImpl) getDescriptor()).newNodeNumber();
