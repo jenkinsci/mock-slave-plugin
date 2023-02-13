@@ -43,7 +43,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.WeakHashMap;
 import java.util.concurrent.TimeUnit;
@@ -51,7 +51,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import jenkins.model.Jenkins;
 import org.apache.commons.io.FileUtils;
-import org.codehaus.mojo.animal_sniffer.IgnoreJRERequirement;
 import org.jenkinsci.Symbol;
 import org.kohsuke.stapler.DataBoundConstructor;
 
@@ -89,9 +88,9 @@ public class MockSlaveLauncher extends ComputerLauncher {
             while (portFile.length() == 0) {
                 Thread.sleep(100);
             }
-            int port = Integer.parseInt(FileUtils.readFileToString(portFile));
+            int port = Integer.parseInt(FileUtils.readFileToString(portFile, StandardCharsets.US_ASCII));
             listener.getLogger().println("connecting to localhost:" + port);
-            Socket s = new Socket(getLoopbackAddress(), port);
+            Socket s = new Socket(InetAddress.getLoopbackAddress(), port);
             is = s.getInputStream();
             os = s.getOutputStream();
             listener.getLogger().printf("throttling with latency=%dms bandwidth=%dbps%n", latency, bandwidth);
@@ -108,7 +107,7 @@ public class MockSlaveLauncher extends ComputerLauncher {
         new StreamCopyThread("stderr copier for remote agent on " + computer.getDisplayName(), proc.getErrorStream(), listener.getLogger()).start();
         computer.setChannel(is, os, listener.getLogger(), new Channel.Listener() {
             @Override public void onClosed(Channel channel, IOException cause) {
-                Jenkins j = Jenkins.getInstance();
+                Jenkins j = Jenkins.get();
                 if (j == null || j.isTerminating()) {
                     LOGGER.log(Level.INFO, "Leaving processes running on {0} during shutdown", computer.getName());
                 } else {
@@ -124,26 +123,17 @@ public class MockSlaveLauncher extends ComputerLauncher {
         LOGGER.log(Level.INFO, "agent launched for {0}", computer.getDisplayName());
     }
 
-    @IgnoreJRERequirement
-    private InetAddress getLoopbackAddress() throws UnknownHostException {
-        try {
-            return InetAddress.getLoopbackAddress();
-        } catch (NoSuchMethodError x) { // JDK 5/6
-            return InetAddress.getLocalHost();
-        }
-    }
-
     @Symbol("mock")
     @Extension
     public static class DescriptorImpl extends Descriptor<ComputerLauncher> {
-        public String getDisplayName() {
+        @Override public String getDisplayName() {
             return "Mock Agent Launcher";
         }
     }
 
     @Extension
     public static class Listener extends ComputerListener {
-        static final Map<Computer,Long> launchTimes = new WeakHashMap<Computer,Long>();
+        static final Map<Computer, Long> launchTimes = new WeakHashMap<>();
         @Override
         public void onOnline(Computer c, TaskListener listener) throws IOException, InterruptedException {
             Long launchTime = launchTimes.remove(c);

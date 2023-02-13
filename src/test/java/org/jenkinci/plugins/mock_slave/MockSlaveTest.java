@@ -31,9 +31,6 @@ import com.gargoylesoftware.htmlunit.html.HtmlTextInput;
 import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
 import hudson.model.Node;
-import hudson.slaves.NodeProperty;
-import hudson.slaves.RetentionStrategy;
-import java.util.Collections;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.isA;
 import static org.junit.Assert.assertEquals;
@@ -47,7 +44,7 @@ public class MockSlaveTest {
     @Rule public JenkinsRule r = new JenkinsRule();
 
     @Test public void basics() throws Exception {
-        Node slave = new MockSlave("test-slave", 1, Node.Mode.NORMAL, "", RetentionStrategy.Always.INSTANCE, Collections.<NodeProperty<?>>emptyList());
+        Node slave = new MockSlave("test-slave");
         r.jenkins.addNode(slave);
         FreeStyleProject j = r.createFreeStyleProject();
         j.setAssignedNode(slave);
