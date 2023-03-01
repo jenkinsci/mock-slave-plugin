@@ -3,7 +3,7 @@
     <parent>
         <groupId>org.jenkins-ci.plugins</groupId>
         <artifactId>plugin</artifactId>
-        <version>4.54</version>
+        <version>4.55</version>
         <relativePath/>
     </parent>
     <artifactId>mock-slave</artifactId>
@@ -61,6 +61,12 @@
             <artifactId>awaitility</artifactId>
             <version>4.2.0</version>
             <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.hamcrest</groupId>
+                    <artifactId>hamcrest</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
 
