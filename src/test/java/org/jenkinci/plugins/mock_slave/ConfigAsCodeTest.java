@@ -67,6 +67,8 @@ public class ConfigAsCodeTest {
         FreeStyleBuild b = p.scheduleBuild2(0).waitForStart();
         r.waitForMessage("Sleeping", b);
         ConfigurationAsCode.get().export(System.out);
+        b.getExecutor().interrupt();
+        r.waitForCompletion(b);
     }
 
 }
