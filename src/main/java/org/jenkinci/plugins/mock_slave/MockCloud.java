@@ -206,9 +206,7 @@ public final class MockCloud extends Cloud {
 
         private transient Process proc;
 
-        MockInboundLauncher() {
-            super(false);
-        }
+        MockInboundLauncher() {}
 
         @Override public boolean isLaunchSupported() {
             return proc == null;
@@ -223,7 +221,8 @@ public final class MockCloud extends Cloud {
                 }
                 proc = new ProcessBuilder(
                         "java", "-jar", agentJar.getAbsolutePath(),
-                        "-jnlpUrl", JenkinsLocationConfiguration.get().getUrl() + computer.getUrl() + "jenkins-agent.jnlp",
+                        "-url", JenkinsLocationConfiguration.get().getUrl(),
+                        "-name", computer.getName(),
                         "-secret", computer.getJnlpMac()).
                     redirectErrorStream(true).
                     start();
