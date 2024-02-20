@@ -24,20 +24,22 @@
 
 package org.jenkinci.plugins.mock_slave;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import hudson.Extension;
 import hudson.Functions;
 import hudson.Util;
-import hudson.model.Computer;
 import hudson.model.Descriptor;
 import hudson.model.Descriptor.FormException;
 import hudson.model.Label;
+import hudson.model.LoadStatistics;
 import hudson.model.Node;
+import hudson.model.Queue;
 import hudson.model.Slave;
 import hudson.model.TaskListener;
+import hudson.model.queue.QueueListener;
 import hudson.slaves.AbstractCloudComputer;
 import hudson.slaves.AbstractCloudSlave;
 import hudson.slaves.Cloud;
+import hudson.slaves.CloudProvisioningListener;
 import hudson.slaves.CloudRetentionStrategy;
 import hudson.slaves.JNLPLauncher;
 import hudson.slaves.NodeProvisioner;
@@ -50,10 +52,15 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jenkins.model.Jenkins;
 import jenkins.model.JenkinsLocationConfiguration;
+import jenkins.util.Listeners;
+import jenkins.util.Timer;
 import org.apache.commons.io.FileUtils;
 import org.jenkinsci.Symbol;
 import org.jenkinsci.plugins.durabletask.executors.OnceRetentionStrategy;
@@ -129,16 +136,20 @@ public final class MockCloud extends Cloud {
         LOGGER.fine(() -> "label=" + state.getLabel() + " additionalPlannedCapacity=" + state.getAdditionalPlannedCapacity() + " excessWorkload=" + originalExcessWorkload);
         Collection<NodeProvisioner.PlannedNode> r = new ArrayList<>();
         while (excessWorkload > 0) {
-            final long cnt = ((DescriptorImpl) getDescriptor()).newNodeNumber();
-            r.add(new NodeProvisioner.PlannedNode("Mock Agent #" + cnt, Computer.threadPoolForRemoting.submit(() -> {
+            long cnt = ((DescriptorImpl) getDescriptor()).newNodeNumber();
+            CompletableFuture<Node> future;
+            try {
                 MockCloudSlave agent = new MockCloudSlave("mock-agent-" + cnt, inbound);
                 agent.setNodeDescription("Mock agent #" + cnt);
                 agent.setMode(mode);
                 agent.setNumExecutors(numExecutors);
                 agent.setLabelString(labelString);
                 agent.setRetentionStrategy(oneShot ? new OnceRetentionStrategy(1) : new CloudRetentionStrategy(1));
-                return agent;
-            }), numExecutors));
+                future = CompletableFuture.completedFuture(agent);
+            } catch (IOException | Descriptor.FormException x) {
+                future = CompletableFuture.failedFuture(x);
+            }
+            r.add(new NodeProvisioner.PlannedNode("Mock Agent #" + cnt, future, numExecutors));
             excessWorkload -= numExecutors;
         }
         LOGGER.log(Level.FINE, "planning to provision {0} agents", r.size());
@@ -150,12 +161,8 @@ public final class MockCloud extends Cloud {
 
         private long counter;
 
-        @SuppressFBWarnings(value = "ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD", justification = "actually a singleton")
         public DescriptorImpl() {
             load();
-            // JENKINS-24752: make things happen more quickly so that we can test it interactively.
-            NodeProvisioner.NodeProvisionerInvoker.INITIALDELAY = 1000;
-            NodeProvisioner.NodeProvisionerInvoker.RECURRENCEPERIOD = 1000;
         }
 
         synchronized long newNodeNumber() {
@@ -247,6 +254,65 @@ public final class MockCloud extends Cloud {
 
         MockCloudComputer(MockCloudSlave slave) {
             super(slave);
+        }
+
+    }
+
+    // Adapted from io.jenkins.plugins.kubernetes; TODO introduce to core with some sort of marker on Cloud:
+    @Extension(ordinal = 100)
+    public static class NoDelayProvisionerStrategy extends NodeProvisioner.Strategy {
+        @Override public NodeProvisioner.StrategyDecision apply(NodeProvisioner.StrategyState strategyState) {
+            final Label label = strategyState.getLabel();
+            LoadStatistics.LoadStatisticsSnapshot snapshot = strategyState.getSnapshot();
+            int availableCapacity = snapshot.getAvailableExecutors() + snapshot.getConnectingExecutors() + strategyState.getPlannedCapacitySnapshot() + strategyState.getAdditionalPlannedCapacity();
+            int previousCapacity = availableCapacity;
+            int currentDemand = snapshot.getQueueLength();
+            LOGGER.log(Level.FINE, "Available capacity={0}, currentDemand={1}", new Object[] {availableCapacity, currentDemand});
+            if (availableCapacity < currentDemand) {
+                List<Cloud> jenkinsClouds = new ArrayList<>(Jenkins.get().clouds);
+                Cloud.CloudState cloudState = new Cloud.CloudState(label, strategyState.getAdditionalPlannedCapacity());
+                for (Cloud cloud : jenkinsClouds) {
+                    int workloadToProvision = currentDemand - availableCapacity;
+                    if (!(cloud instanceof MockCloud)) {
+                        continue;
+                    }
+                    if (!cloud.canProvision(cloudState)) {
+                        continue;
+                    }
+                    if (CloudProvisioningListener.all().stream().anyMatch(cl -> cl.canProvision(cloud, cloudState, workloadToProvision) != null)) {
+                        continue;
+                    }
+                    Collection<NodeProvisioner.PlannedNode> plannedNodes = cloud.provision(cloudState, workloadToProvision);
+                    LOGGER.fine(() -> "Planned " + plannedNodes.size() + " new nodes");
+                    Listeners.notify(CloudProvisioningListener.class, true, cl -> cl.onStarted(cloud, strategyState.getLabel(), plannedNodes));
+                    strategyState.recordPendingLaunches(plannedNodes);
+                    availableCapacity += plannedNodes.size();
+                    LOGGER.log(Level.FINE, "After provisioning, available capacity={0}, currentDemand{1}", new Object[] {availableCapacity, currentDemand});
+                    break;
+                }
+            }
+            if (availableCapacity > previousCapacity && label != null) {
+                LOGGER.fine("Suggesting NodeProvisioner review");
+                Timer.get().schedule(label.nodeProvisioner::suggestReviewNow, 1L, TimeUnit.SECONDS);
+            }
+            if (availableCapacity >= currentDemand) {
+                LOGGER.fine("Provisioning completed");
+                return NodeProvisioner.StrategyDecision.PROVISIONING_COMPLETED;
+            } else {
+                LOGGER.fine("Provisioning not complete, consulting remaining strategies");
+                return NodeProvisioner.StrategyDecision.CONSULT_REMAINING_STRATEGIES;
+            }
+        }
+        @Extension public static class FastProvisioning extends QueueListener {
+            @Override public void onEnterBuildable(Queue.BuildableItem item) {
+                final Jenkins jenkins = Jenkins.get();
+                final Label label = item.getAssignedLabel();
+                for (Cloud cloud : jenkins.clouds) {
+                    if (cloud instanceof MockCloud && cloud.canProvision(new Cloud.CloudState(label, 0))) {
+                        (label == null ? jenkins.unlabeledNodeProvisioner : label.nodeProvisioner).suggestReviewNow();
+                    }
+                }
+            }
         }
 
     }
