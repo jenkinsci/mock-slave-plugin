@@ -144,7 +144,7 @@ public final class MockCloud extends Cloud {
                 agent.setMode(mode);
                 agent.setNumExecutors(numExecutors);
                 agent.setLabelString(labelString);
-                agent.setRetentionStrategy(oneShot ? new OnceRetentionStrategy(1) : new CloudRetentionStrategy(1));
+                agent.setRetentionStrategy(oneShot ? new OnceRetentionStrategy(5) : new CloudRetentionStrategy(1));
                 future = CompletableFuture.completedFuture(agent);
             } catch (IOException | Descriptor.FormException x) {
                 future = CompletableFuture.failedFuture(x);
