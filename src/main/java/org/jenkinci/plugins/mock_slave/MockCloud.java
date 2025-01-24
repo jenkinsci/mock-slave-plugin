@@ -64,6 +64,8 @@ import jenkins.util.Timer;
 import org.apache.commons.io.FileUtils;
 import org.jenkinsci.Symbol;
 import org.jenkinsci.plugins.durabletask.executors.OnceRetentionStrategy;
+import org.kohsuke.accmod.Restricted;
+import org.kohsuke.accmod.restrictions.DoNotUse;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.DataBoundSetter;
 import org.kohsuke.stapler.QueryParameter;
@@ -169,6 +171,11 @@ public final class MockCloud extends Cloud {
             counter++;
             save();
             return counter;
+        }
+
+        @Restricted(DoNotUse.class) // for tests only
+        public String nextAgentName() {
+            return "mock-agent-" + (counter + 1);
         }
 
         @Override public String getDisplayName() {
