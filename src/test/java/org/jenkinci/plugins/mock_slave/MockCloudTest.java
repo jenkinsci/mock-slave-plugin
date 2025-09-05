@@ -30,6 +30,7 @@ import hudson.model.AbstractBuild;
 import hudson.model.BuildListener;
 import hudson.model.Computer;
 import hudson.model.Label;
+import hudson.model.Node;
 import java.io.IOException;
 import java.util.logging.Level;
 import jenkins.model.Jenkins;
@@ -69,7 +70,9 @@ public class MockCloudTest {
         p.getBuildersList().add(new TestBuilder() {
             @Override public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener) throws InterruptedException, IOException {
                 try {
-                    var c = build.getBuiltOn().toComputer();
+                    var slave = build.getBuiltOn();
+                    listener.getLogger().println("running on " + slave + " " + slave.getNodeDescription());
+                    var c = slave.toComputer();
                     var logText = c.getLogText();
                     var out = PrefixedOutputStream.builder().withColor(PrefixedOutputStream.Color.YELLOW).withName(c.getName()).build(System.out);
                     Computer.threadPoolForRemoting.submit(() -> {
