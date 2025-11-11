@@ -28,21 +28,33 @@ import hudson.model.FreeStyleBuild;
 import hudson.model.FreeStyleProject;
 import hudson.model.Node;
 import io.jenkins.plugins.casc.ConfigurationAsCode;
-import org.junit.ClassRule;
-import org.junit.Test;
-import static org.junit.Assert.*;
-import org.junit.Rule;
-import org.jvnet.hudson.test.BuildWatcher;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.jvnet.hudson.test.JenkinsRule;
 import org.jvnet.hudson.test.SleepBuilder;
+import org.jvnet.hudson.test.junit.jupiter.BuildWatcherExtension;
+import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
-public class ConfigAsCodeTest {
+@WithJenkins
+class ConfigAsCodeTest {
 
-    @ClassRule public static BuildWatcher buildWatcher = new BuildWatcher();
+    @SuppressWarnings("unused")
+    @RegisterExtension
+    private static final BuildWatcherExtension BUILD_WATCHER = new BuildWatcherExtension();
 
-    @Rule public JenkinsRule r = new JenkinsRule();
+    private JenkinsRule r;
+    
+    @BeforeEach
+    void beforeEach(JenkinsRule rule) {
+        r = rule;
+    }
 
-    @Test public void cloud() throws Exception {
+    @Test
+    void cloud() throws Exception {
         ConfigurationAsCode.get().configure(ConfigAsCodeTest.class.getResource("cloud.yaml").toString());
         assertEquals(1, r.jenkins.clouds.size());
         MockCloud cloud = (MockCloud) r.jenkins.clouds.get(0);
@@ -57,7 +69,8 @@ public class ConfigAsCodeTest {
         assertNotEquals("", b.getBuiltOnStr());
     }
 
-    @Test public void export() throws Exception {
+    @Test
+    void export() throws Exception {
         r.jenkins.setCrumbIssuer(null); // TestCrumbIssuer noise
         r.jenkins.setNumExecutors(0);
         r.jenkins.clouds.add(new MockCloud("mock"));

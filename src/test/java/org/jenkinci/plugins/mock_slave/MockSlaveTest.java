@@ -33,17 +33,26 @@ import hudson.model.FreeStyleProject;
 import hudson.model.Node;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.isA;
-import static org.junit.Assert.assertEquals;
-import org.junit.Test;
-import org.junit.Rule;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.Issue;
 import org.jvnet.hudson.test.JenkinsRule;
+import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
-public class MockSlaveTest {
+@WithJenkins
+class MockSlaveTest {
 
-    @Rule public JenkinsRule r = new JenkinsRule();
+    private JenkinsRule r;
 
-    @Test public void basics() throws Exception {
+    @BeforeEach
+    void beforeEach(JenkinsRule rule) {
+        r = rule;
+    }
+
+    @Test
+    void basics() throws Exception {
         Node slave = new MockSlave("test-slave");
         r.jenkins.addNode(slave);
         FreeStyleProject j = r.createFreeStyleProject();
@@ -53,7 +62,8 @@ public class MockSlaveTest {
     }
 
     @Issue("JENKINS-66742")
-    @Test public void guiCreation() throws Exception {
+    @Test
+    void guiCreation() throws Exception {
         JenkinsRule.WebClient wc = r.createWebClient();
         HtmlPage computerNewPage = wc.goTo("computer/new");
         HtmlForm createItemForm = computerNewPage.getFormByName("createItem");
