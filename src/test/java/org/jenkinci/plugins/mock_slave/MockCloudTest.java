@@ -33,27 +33,39 @@ import hudson.model.Label;
 import java.io.IOException;
 import java.util.logging.Level;
 import jenkins.model.Jenkins;
-import org.awaitility.Awaitility;
+
+import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.empty;
-import org.junit.Rule;
-import org.junit.Test;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.jvnet.hudson.test.JenkinsRule;
-import org.jvnet.hudson.test.LoggerRule;
+import org.jvnet.hudson.test.LogRecorder;
 import org.jvnet.hudson.test.MockAuthorizationStrategy;
 import org.jvnet.hudson.test.PrefixedOutputStream;
 import org.jvnet.hudson.test.TailLog;
 import org.jvnet.hudson.test.TestBuilder;
+import org.jvnet.hudson.test.junit.jupiter.WithJenkins;
 
-public class MockCloudTest {
+@WithJenkins
+class MockCloudTest {
 
-    @Rule public JenkinsRule r = new JenkinsRule();
-    @Rule public LoggerRule logging = new LoggerRule().record(MockCloud.class, Level.FINE);
+    private final LogRecorder logging = new LogRecorder().record(MockCloud.class, Level.FINE);
 
-    @Test public void outbound() throws Exception {
+    private JenkinsRule r;
+
+    @BeforeEach
+    void beforeEach(JenkinsRule rule) {
+        r = rule;
+    }
+
+    @Test
+    void outbound() throws Exception {
         smokeTest(new MockCloud("mock"));
     }
 
-    @Test public void inbound() throws Exception {
+    @Test
+    void inbound() throws Exception {
         var cloud = new MockCloud("mock");
         cloud.setInbound(true);
         smokeTest(cloud);
@@ -67,7 +79,8 @@ public class MockCloudTest {
         var p = r.createFreeStyleProject("p");
         p.setAssignedLabel(Label.get("mock"));
         p.getBuildersList().add(new TestBuilder() {
-            @Override public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener) throws InterruptedException, IOException {
+            @Override
+            public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener) throws InterruptedException, IOException {
                 try {
                     var c = build.getBuiltOn().toComputer();
                     var logText = c.getLogText();
@@ -91,7 +104,7 @@ public class MockCloudTest {
             r.buildAndAssertSuccess(p);
             tail.waitForCompletion();
         }
-        Awaitility.await().until(() -> r.jenkins.getNodes(), empty());
+        await().until(() -> r.jenkins.getNodes(), empty());
         if (Functions.isWindows()) {
             // Need to wait for Tailer to close the log file.
             Thread.sleep(5_000);
