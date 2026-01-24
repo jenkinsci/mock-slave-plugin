@@ -41,4 +41,7 @@ THE SOFTWARE.
     <f:entry field="inbound" title="Inbound Agents">
         <f:checkbox/>
     </f:entry>
+    <f:entry field="maximum" title="Maximum capacity">
+        <f:number clazz="number" min="0" step="1" default="0"/>
+    </f:entry>
 </j:jelly>
