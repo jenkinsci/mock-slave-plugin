@@ -83,6 +83,7 @@ public final class MockCloud extends Cloud {
     private Boolean oneShot = true; // reading null for compatibility
     private boolean inbound;
     // TODO could also support WebSocket
+    private int maximum;
 
     @DataBoundConstructor public MockCloud(String name) {
         super(name);
@@ -120,6 +121,14 @@ public final class MockCloud extends Cloud {
         this.inbound = inbound;
     }
 
+    public int getMaximum() {
+        return maximum;
+    }
+
+    @DataBoundSetter public void setMaximum(int maximum) {
+        this.maximum = maximum;
+    }
+
     private Object readResolve() {
         if (oneShot == null) {
             oneShot = numExecutors == 1;
@@ -129,19 +138,29 @@ public final class MockCloud extends Cloud {
 
     @Override public boolean canProvision(Cloud.CloudState state) {
         Label label = state.getLabel();
-        LOGGER.log(Level.FINE, "checking whether we can provision {0}", label);
+        LOGGER.fine(() -> "checking whether " + name + " can provision " + label);
         return label == null ? mode == Node.Mode.NORMAL : label.matches(Label.parse(labelString));
+        // Not taking maximum into account, since this method is normally interpreted as corresponding to static configuration.
+        // but see https://github.com/jenkinsci/jenkins/issues/20434
     }
 
     @Override public Collection<NodeProvisioner.PlannedNode> provision(CloudState state, int excessWorkload) {
         int originalExcessWorkload = excessWorkload;
-        LOGGER.fine(() -> "label=" + state.getLabel() + " additionalPlannedCapacity=" + state.getAdditionalPlannedCapacity() + " excessWorkload=" + originalExcessWorkload);
+        LOGGER.fine(() -> "name=" + name + " label=" + state.getLabel() + " additionalPlannedCapacity=" + state.getAdditionalPlannedCapacity() + " excessWorkload=" + originalExcessWorkload);
         Collection<NodeProvisioner.PlannedNode> r = new ArrayList<>();
         while (excessWorkload > 0) {
+            if (maximum > 0) {
+                long curr = Jenkins.get().getNodes().stream().filter(n -> n instanceof MockCloudSlave mcs && name.equals(mcs.cloudName)).count();
+                if (curr >= maximum) {
+                    int more = excessWorkload;
+                    LOGGER.fine(() -> name + " already running " + curr + " agents ≥" + maximum + "; will not provision " + more + " more");
+                    break;
+                }
+            }
             long cnt = ((DescriptorImpl) getDescriptor()).newNodeNumber();
             CompletableFuture<Node> future;
             try {
-                MockCloudSlave agent = new MockCloudSlave("mock-agent-" + cnt, inbound);
+                MockCloudSlave agent = new MockCloudSlave(name, "mock-agent-" + cnt, inbound);
                 agent.setNodeDescription("Mock agent #" + cnt);
                 agent.setMode(mode);
                 agent.setNumExecutors(numExecutors);
@@ -154,7 +173,7 @@ public final class MockCloud extends Cloud {
             r.add(new NodeProvisioner.PlannedNode("Mock Agent #" + cnt, future, numExecutors));
             excessWorkload -= numExecutors;
         }
-        LOGGER.log(Level.FINE, "planning to provision {0} agents", r.size());
+        LOGGER.fine(() -> name + " planning to provision " + r.size() + " agents");
         return r;
     }
 
@@ -194,8 +213,11 @@ public final class MockCloud extends Cloud {
 
     private static final class MockCloudSlave extends AbstractCloudSlave {
 
-        private MockCloudSlave(String slaveName, boolean inbound) throws FormException, IOException {
+        final String cloudName;
+
+        private MockCloudSlave(String cloudName, String slaveName, boolean inbound) throws FormException, IOException {
             super(slaveName, MockSlave.root(slaveName), inbound ? new MockInboundLauncher() : new MockSlaveLauncher(0, 0));
+            this.cloudName = cloudName;
         }
 
         @Override public AbstractCloudComputer<?> createComputer() {
@@ -290,12 +312,15 @@ public final class MockCloud extends Cloud {
                         continue;
                     }
                     Collection<NodeProvisioner.PlannedNode> plannedNodes = cloud.provision(cloudState, workloadToProvision);
-                    LOGGER.fine(() -> "Planned " + plannedNodes.size() + " new nodes");
+                    LOGGER.fine(() -> cloud.name + " planned " + plannedNodes.size() + " new nodes");
                     Listeners.notify(CloudProvisioningListener.class, true, cl -> cl.onStarted(cloud, strategyState.getLabel(), plannedNodes));
                     strategyState.recordPendingLaunches(plannedNodes);
                     availableCapacity += plannedNodes.size();
-                    LOGGER.log(Level.FINE, "After provisioning, available capacity={0}, currentDemand{1}", new Object[] {availableCapacity, currentDemand});
-                    break;
+                    var ac = availableCapacity;
+                    LOGGER.fine(() -> cloud.name + " after provisioning, available capacity: " + ac + "; current demand: " + currentDemand);
+                    if (availableCapacity >= currentDemand) { // added vs. kubernetes-plugin version; see note in canProvision
+                        break;
+                    }
                 }
             }
             if (availableCapacity > previousCapacity && label != null) {
