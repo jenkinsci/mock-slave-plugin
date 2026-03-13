@@ -35,8 +35,11 @@ import org.kohsuke.stapler.DataBoundConstructor;
 
 public final class MockSlave extends Slave {
 
-    @DataBoundConstructor public MockSlave(String name) throws IOException, Descriptor.FormException {
-        super(name, root(name), new MockSlaveLauncher(0, 0));
+    public final boolean inbound;
+
+    @DataBoundConstructor public MockSlave(String name, boolean inbound) throws IOException, Descriptor.FormException {
+        super(name, root(name), inbound ? new MockInboundLauncher() : new MockSlaveLauncher(0, 0));
+        this.inbound = inbound;
     }
 
     /** Provides a predictable {@code remoteFS} unique for a given slave name and Jenkins instance. */

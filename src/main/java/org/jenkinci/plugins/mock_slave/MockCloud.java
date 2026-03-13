@@ -238,47 +238,6 @@ public final class MockCloud extends Cloud {
 
     }
 
-    private static final class MockInboundLauncher extends JNLPLauncher {
-
-        private transient Process proc;
-
-        MockInboundLauncher() {}
-
-        @Override public boolean isLaunchSupported() {
-            return proc == null;
-        }
-
-        @Override public void launch(SlaveComputer computer, TaskListener listener) {
-            LOGGER.fine(() -> "launching agent for " + computer.getName());
-            try {
-                File agentJar = new File(Jenkins.get().getRootDir(), "agent.jar");
-                if (!agentJar.isFile()) {
-                    FileUtils.copyURLToFile(new Slave.JnlpJar("agent.jar").getURL(), agentJar);
-                }
-                proc = new ProcessBuilder(
-                        "java", "-jar", agentJar.getAbsolutePath(),
-                        "-url", JenkinsLocationConfiguration.get().getUrl(),
-                        "-name", computer.getName(),
-                        "-secret", computer.getJnlpMac()).
-                    redirectErrorStream(true).
-                    start();
-                new StreamCopyThread("I/O of " + computer.getName(), proc.getInputStream(), listener.getLogger()).start();
-                Instant max = Instant.now().plus(Duration.ofSeconds(15));
-                while (computer.isOffline() && Instant.now().isBefore(max)) {
-                    Thread.sleep(100);
-                }
-            } catch (Exception x) {
-                Functions.printStackTrace(x, listener.error("Failed to launch"));
-            }
-        }
-
-        @Override public void afterDisconnect(SlaveComputer computer, TaskListener listener) {
-            LOGGER.fine(() -> "terminating agent for " + computer.getName());
-            proc.destroy();
-        }
-
-    }
-
     private static final class MockCloudComputer extends AbstractCloudComputer<MockCloudSlave> {
 
         MockCloudComputer(MockCloudSlave slave) {

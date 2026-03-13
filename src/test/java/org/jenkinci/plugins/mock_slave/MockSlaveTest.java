@@ -52,8 +52,17 @@ class MockSlaveTest {
     }
 
     @Test
-    void basics() throws Exception {
-        Node slave = new MockSlave("test-slave");
+    void outbound() throws Exception {
+        basics(false);
+    }
+
+    @Test
+    void inbound() throws Exception {
+        basics(true);
+    }
+
+    private void basics(boolean inbound) throws Exception {
+        Node slave = new MockSlave("test-slave", inbound);
         r.jenkins.addNode(slave);
         FreeStyleProject j = r.createFreeStyleProject();
         j.setAssignedNode(slave);
